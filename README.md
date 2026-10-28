@@ -13,11 +13,18 @@ programs → USB → pendant.
 
 ## In short
 
+Start the simulator and the 3D viewer:
+
 ```bash
-docker compose up -d ursim viewer         # simulator + 3D viewer
-#   http://localhost:6080/vnc.html  → Connect → power button → ON → START → Remote Control
-#   http://localhost:7001/          → live 3D view
-docker compose run --rm dev bash          # Python shell inside the container
+docker compose up -d ursim viewer
+```
+
+Open http://localhost:6080/vnc.html (Connect → power button → ON → START →
+header icon: Remote Control) and http://localhost:7001/ (live 3D view). Then
+open a Python shell inside the container and run things:
+
+```bash
+docker compose run --rm dev bash
 python scripts/check_connection.py --target sim
 python examples/grid_process.py
 ```

@@ -71,9 +71,12 @@ Documents.
 Open a terminal (Mac: Terminal; Windows: PowerShell) and run:
 
 ```bash
-cd ~                 # Mac: your home folder     Windows PowerShell: cd $HOME
+cd ~
 git clone https://github.com/reckj/UR5-PCL-EmbodiedInteraction.git
 ```
+
+(`cd ~` goes to your home folder on the Mac; in Windows PowerShell use
+`cd $HOME`.)
 
 You now have a folder `UR5-PCL-EmbodiedInteraction`.
 
@@ -194,15 +197,31 @@ Type `exit` to leave the container shell. **You are set up.** Continue with
 
 ## Daily routine
 
-```bash
-docker compose up -d ursim viewer      # start sim + viewer (seconds after the first time)
-#   -> localhost:6080/vnc.html : Connect -> ON -> START -> header icon: Remote Control
-#   -> localhost:7001          : viewer
-docker compose run --rm dev bash       # shell inside the container
-python examples/grid_process.py        # ... run things
-exit
-docker compose down                    # stop everything when you are done
-```
+1. Start the simulator and viewer (seconds, after the first time):
+
+   ```bash
+   docker compose up -d ursim viewer
+   ```
+
+2. http://localhost:6080/vnc.html → Connect → ON → START → header icon:
+   Remote Control. Viewer at http://localhost:7001/.
+3. Shell inside the container, run things, leave with `exit`:
+
+   ```bash
+   docker compose run --rm dev bash
+   python examples/grid_process.py
+   exit
+   ```
+
+4. When you are done:
+
+   ```bash
+   docker compose down
+   ```
+
+> Copy commands **without** any trailing `# comment` — the Mac's default
+> shell does not understand comments on an interactive line and passes the
+> words to the command (you'd see `bash: #: No such file or directory`).
 
 **Double-click launchers (optional convenience):** `Start UR5e Sim.command`
 (Mac) / `Start UR5e Sim.bat` (Windows) in the repo folder run
@@ -252,6 +271,11 @@ The robot is not **ON → START**ed yet (step 7), or not in **Remote Control**
 pendant tab and rerun. A *blank* robot mode or `connected : False` right after
 boot means the same thing — URSim takes a moment after START. `robot mode : 7`
 in the check output = running, ready.
+
+**`bash: #: No such file or directory` after `docker compose run --rm dev bash`**
+You pasted a command together with a trailing `# comment`. The Mac's default
+zsh passes the `#…` words on to the command. Retype the command without the
+comment.
 
 **`smoke_test_move.py` says "Failed to start RTDE data synchronization" or
 "control interface not connected"**

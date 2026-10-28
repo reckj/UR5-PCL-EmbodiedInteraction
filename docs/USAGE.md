@@ -13,12 +13,19 @@ every `git pull` — copy, then edit the copy.
 
 ## 1. Working loop
 
-```bash
-docker compose up -d ursim viewer          # 1. sim + viewer running, robot ON → START → Remote Control
-docker compose run --rm dev bash           # 2. shell inside the container
-python students/anna/my_script.py          # 3. run; watch the arm at localhost:7001
-exit
-```
+1. Sim + viewer running, robot ON → START → Remote Control
+   (`docker compose up -d ursim viewer`, see SETUP.md).
+2. Shell inside the container, run your script, watch the arm at
+   localhost:7001:
+
+   ```bash
+   docker compose run --rm dev bash
+   python students/anna/my_script.py
+   exit
+   ```
+
+(Copy commands without a trailing `# comment` — the Mac's default shell
+passes the comment words on to the command.)
 
 Edit with VS Code on your laptop — the repo is mounted into the container, so
 saved files run immediately, no rebuild, no copying. Keep the dev shell open
