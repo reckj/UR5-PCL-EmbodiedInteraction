@@ -1,9 +1,9 @@
 # Usage — working with the framework
 
-Setup done ([SETUP.md](SETUP.md))? This page covers: the Python API, running
-and writing scripts, sim vs. real robot, the 3D viewer (scenes, models,
-toolheads, safety planes), and getting PolyScope programs from the sim onto
-the real pendant.
+Setup done ([SETUP.md](SETUP.md))? This page covers: the Python API, teaching
+a workspace and the function templates, sim vs. real robot, the 3D viewer
+(scenes, models, toolheads, safety planes), and getting PolyScope programs
+from the sim onto the real pendant.
 
 Everything you write goes into **`students/<your-name>/`** (see
 `students/README.md`). Files in `src/`, `scripts/`, `examples/` are replaced on
@@ -128,7 +128,56 @@ or a threshold of `-1` — and remove the fake before the lab. Outputs do work:
 `RTDEIOInterface`) — the full ur_rtde API if `Robot` doesn't have what you
 need. Raw calls skip the framework's checks.
 
-## 3. The examples
+## 3. Teach your workspace, then use the function templates
+
+`examples/function_templates/` has **one short script per API call**
+(`01_read_state.py` … `09_raw_rtde.py`, table in its README). They all move
+inside a **taught workspace** — a box you teach once per setup, in four steps,
+with `00_teach_workspace.py`:
+
+```bash
+python examples/function_templates/00_teach_workspace.py --target sim
+```
+
+The script only *reads* where the arm is; you move it — in the sim with the
+pendant's **Move** tab, on the real robot with the **freedrive button** on the
+back of the pendant (supervised). Press Enter at: **corner A** (on the
+surface), **corner B** (diagonally opposite, on the surface), **top** (highest
+point the tool should reach), **home** (a comfortable pose above the area —
+every example starts and ends there). Result: `workspace.json` in the repo
+folder (git-ignored). In a hurry: `--demo` writes a 300 × 300 × 200 mm box
+around the sim's start pose instead.
+
+`[screenshot: terminal during the 4 teach steps]`
+
+From then on, scripts address the box in **fractions**:
+
+```python
+from ur5e import Robot, Workspace
+
+ws = Workspace.load()
+with Robot(target="sim", profile=ws) as robot:
+    robot.move_joints(ws.home_joints)         # taught home
+    robot.move_to(ws.pose(0.5, 0.5, 0.3))     # centre of the area, 30 % of the height
+    robot.move_through(ws.line((0.1, 0.1, 0.2), (0.9, 0.9, 0.2), n=6))
+    for cell in ws.grid(3, 3, w=0.1):         # 3 x 3 over the area, 10 % up
+        robot.move_to(cell)
+```
+
+`ws.pose(u, v, w)`: `u`, `v`, `w` are 0…1 along x, y, z of the box; the
+orientation is the one you taught. The same script therefore runs on the
+small demo box in the sim and on the full cart in the lab. `Robot(profile=ws)`
+makes the box the safety profile for that run — moves outside it are
+rejected. On the **real robot** the box is clipped to the measured cell
+(`cart_against_wall`) and keeps its speed ceilings; a workspace taught in the
+sim is refused there (teach it again in the lab — two minutes).
+
+Run the templates in order once — `02_move_joints.py` (moveJ),
+`03_move_to.py` (moveL), `04_move_through.py`, `05_grid_poses.py`,
+`06/07` I/O, `08_safety_rejections.py` (what a rejected move looks like) —
+then copy whatever you need into `students/<name>/`.
+
+## 3b. The other examples
 
 | File | What it shows | Watch for |
 |---|---|---|

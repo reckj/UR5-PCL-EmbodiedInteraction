@@ -34,6 +34,7 @@ from .config import resolve_host
 from .connection import RobotConnection
 from .motion import MotionController
 from .safety import SafetyLimits, get_profile
+from .workspace import Workspace
 
 
 class Robot:
@@ -44,6 +45,8 @@ class Robot:
         self.host = host or resolve_host(target)
         if profile is None:
             profile = "sim_open" if target == "sim" else "cart_against_wall"
+        if isinstance(profile, Workspace):          # a taught workspace -> its profile
+            profile = profile.profile(target)
         self.limits: SafetyLimits = get_profile(profile) if isinstance(profile, str) else profile
         self._allow_real = allow_real
         self.conn = RobotConnection(self.host, control=True, io=True)

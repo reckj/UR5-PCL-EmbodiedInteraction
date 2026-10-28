@@ -9,8 +9,9 @@ from __future__ import annotations
 from .connection import RobotConnection
 from .config import resolve_host
 from .robot import Robot, grid_poses, line_poses
+from .workspace import Workspace
 
-__all__ = ["Robot", "grid_poses", "line_poses",
+__all__ = ["Robot", "Workspace", "grid_poses", "line_poses",
            "RobotConnection", "resolve_host", "connect"]
 
 

@@ -9,6 +9,9 @@ students/*
 # local config (optional VIEWER_SCENE etc.)
 .env
 
+# taught workspace(s) — one per setup, not shared
+workspace*.json
+
 # Python
 __pycache__/
 *.py[cod]

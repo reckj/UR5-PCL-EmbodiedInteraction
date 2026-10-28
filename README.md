@@ -26,8 +26,13 @@ open a Python shell inside the container and run things:
 ```bash
 docker compose run --rm dev bash
 python scripts/check_connection.py --target sim
-python examples/grid_process.py
+python examples/function_templates/00_teach_workspace.py --target sim --demo
+python examples/function_templates/03_move_to.py
 ```
+
+The second line writes `workspace.json` — the box the examples move in
+(teach it properly in four steps without `--demo`; see
+`examples/function_templates/README.md`).
 
 **Simulator = the lab robot's software version.** The simulator in
 `docker-compose.yml` is pinned to the PolyScope version of the real UR5e
@@ -41,14 +46,17 @@ Only the instructor changes the pinned version, after a PolyScope update.
 `[screenshot: pendant ☰ → About — version and IP address]`
 
 ```python
-from ur5e import Robot, grid_poses
+from ur5e import Robot, Workspace
 
-with Robot(target="sim") as robot:
-    for cell in grid_poses(robot.pose(), nx=3, ny=3, dx=0.04, dy=0.04):
+ws = Workspace.load()                          # the taught box
+with Robot(target="sim", profile=ws) as robot:
+    robot.move_joints(ws.home_joints)
+    for cell in ws.grid(3, 3, w=0.1):          # 3 x 3 over the area, 10 % up
         robot.move_to(cell)
         if robot.read_digital_in(0):
             robot.set_digital_out(0, True)
             robot.set_digital_out(0, False)
+    robot.move_joints(ws.home_joints)
 ```
 
 ## What's in the repo
@@ -58,6 +66,7 @@ docs/            SETUP.md, USAGE.md
 src/ur5e/        the framework: Robot API, connection, motion checks, viewer
 scripts/         check_connection.py, smoke_test_move.py, rtde_viewer.py
 examples/        grid_process.py — copy it to start your own
+examples/function_templates/   one script per API call + 00_teach_workspace.py (teach your work area in 4 steps)
 scenes/          viewer scenes (scene.json + models/)
 toolheads/       toolhead presets for the viewer (mesh + TCP)
 programs/        where the simulator saves PolyScope programs (.urp) — git-ignored
