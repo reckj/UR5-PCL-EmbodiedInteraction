@@ -1,0 +1,60 @@
+services:
+  # URSim — the simulated UR5e controller (PolyScope in your browser at
+  # http://localhost:6080/vnc.html). It is an x86 (amd64) image: native on
+  # Intel/Windows, emulated (slower) on Apple Silicon. It exposes the real RTDE
+  # ports, so framework code is identical against the sim and the real arm.
+  #
+  # !!! The tag MUST match the PolyScope version on the real robot's pendant
+  # !!! (pendant: hamburger menu -> About -> "URSoftware x.y.z"). The lab robot
+  # !!! runs 5.9.1 (checked 2026-10-28); 5.9.4 is the closest image Docker Hub
+  # !!! offers (same 5.9 line, so programs carry over). Only the instructor
+  # !!! changes this line, after a PolyScope update on the robot.
+  ursim:
+    image: universalrobots/ursim_e-series:5.9.4
+    platform: linux/amd64
+    ports:
+      - "5900:5900"                # VNC
+      - "6080:6080"                # browser UI -> http://localhost:6080/vnc.html
+      - "29999:29999"              # dashboard server
+      - "30001-30004:30001-30004"  # RTDE / primary / secondary
+    environment:
+      - ROBOT_MODEL=UR5
+    volumes:
+      # PolyScope saves programs to /ursim/programs -> ./programs on your laptop,
+      # so you can copy .urp files to a USB stick for the real pendant.
+      - ./programs:/ursim/programs
+
+  # Dev shell: Python + ur_rtde + the framework. Prebuilt image (amd64 + arm64),
+  # nothing to build. The repo is bind-mounted at /workspace, so edits on your
+  # laptop are live inside the container; the framework is installed editable
+  # from the mount on every start (entrypoint in the image).
+  dev:
+    image: ghcr.io/reckj/ur5e-dev:hs26.1
+    depends_on:
+      - ursim
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      URSIM_HOST: ursim       # reach URSim by service name on the compose network
+      # UR_HOST: 192.168.1.11 # the lab robot's static IP (pendant: menu -> About) — lab only, see docs/USAGE.md
+    stdin_open: true
+    tty: true
+
+  # Live 3D viewer + scene editor — browser at http://localhost:7001/ .
+  # Receive-only, driven by RTDE state; runs alongside the dev shell.
+  # Scenes live in ./scenes/<name>/ and are switched in the viewer page.
+  viewer:
+    image: ghcr.io/reckj/ur5e-dev:hs26.1
+    depends_on:
+      - ursim
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      URSIM_HOST: ursim
+      VIEWER_SCENE: ${VIEWER_SCENE:-default}
+      PYTHONUNBUFFERED: "1"   # so the viewer's messages show up in `docker compose logs viewer`
+    ports:
+      - "7001:7000"   # host 7001 (avoids macOS AirPlay Receiver on 7000) -> container 7000
+    command: python scripts/rtde_viewer.py --target sim

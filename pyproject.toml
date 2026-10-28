@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ur5e"
+version = "0.0.1"
+description = "UR5e teaching framework — ZHdK Embodied Interaction HS26"
+requires-python = ">=3.10,<3.13"   # ur_rtde 1.6.3 ships/tests up to cp312; 3.13+ untested
+dependencies = [
+    "ur_rtde>=1.6.0",
+    "numpy",
+]
+
+[project.optional-dependencies]
+# Exploration/analysis track. Not needed on the real-robot execution path.
+notebook = ["jupyter", "matplotlib", "numpy"]
+# Live 3D viewer + scene editor (browser, driven by RTDE state). Experimental.
+viz = ["viser==1.1.1", "trimesh==5.2.0", "numpy"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# UR5e link meshes (GLB) + license shipped with the viewer.
+"ur5e.viewer" = ["assets/ur5e/*.glb", "assets/ur5e/LICENSE", "assets/ur5e/SOURCE.md"]

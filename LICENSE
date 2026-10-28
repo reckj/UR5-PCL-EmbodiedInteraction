@@ -1,0 +1,10 @@
+LICENSE — placeholder
+
+Copyright (c) 2026 Johannes Reck / ZHdK — Embodied Interaction HS26.
+License to be decided before public release. Until then: for use within the
+course only.
+
+Third-party material:
+- src/ur5e/viewer/assets/ur5e/ — UR5e visual meshes from Universal Robots'
+  Universal_Robots_ROS2_Description, BSD-3-Clause. See the LICENSE and
+  SOURCE.md files in that folder.

@@ -1,0 +1,55 @@
+{
+  "format": "ur5e-scene/1",
+  "name": "default",
+  "description": "Empty starting scene. Add your table / fixtures / toolhead and Save, or Save-as a new name.",
+  "units_note": "lengths in metres, angles in degrees unless the key says _rad; frames in robot Base",
+  "robot": {
+    "model": "ur5e",
+    "mount": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy_deg": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "toolhead": {
+    "mesh": null,
+    "mesh_units": "mm",
+    "mesh_offset": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy_deg": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "tcp": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotvec_rad": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "payload_kg": 0.0,
+    "color": "#d0d0d0"
+  },
+  "objects": [],
+  "features": [],
+  "safety_planes": [],
+  "view": {}
+}

@@ -1,0 +1,11 @@
+{
+  "format": "ur5e-toolhead/1",
+  "name": "Tool Example",
+  "notes": "Example toolhead (JReck, 2026-10-28). STL authored in METRES with the tool axis along +Y: 80 mm flange plate with the UR 4-hole pattern at y=0, probe reaching y=108 mm, tip ~22 mm off-axis. mesh_offset roll 90 deg turns +Y into tool0 +Z. TCP preset = probe tip (ASSUMED from the geometry - verify on the real tool). Payload unknown - 0 is a placeholder, not a measurement.",
+  "mesh": "tool_example.stl",
+  "mesh_units": "m",
+  "mesh_offset": {"xyz": [0.0, 0.0, 0.0], "rpy_deg": [90.0, 0.0, 0.0]},
+  "tcp": {"xyz": [0.0, 0.021, 0.108], "rotvec_rad": [0.0, 0.0, 0.0]},
+  "payload_kg": 0.0,
+  "color": "#d9a441"
+}

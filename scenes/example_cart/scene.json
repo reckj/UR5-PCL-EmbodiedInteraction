@@ -1,0 +1,129 @@
+{
+  "format": "ur5e-scene/1",
+  "name": "example_cart",
+  "description": "EXAMPLE ONLY. Cart cell sketch: 600x500 mm surface in front of the robot (+X), top at z=0, wall behind the robot. Placement is ASSUMED, not measured - do not re-enter on the pendant without checking the real cell.",
+  "units_note": "lengths in metres, angles in degrees unless the key says _rad; frames in robot Base",
+  "robot": {
+    "model": "ur5e",
+    "mount": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy_deg": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "toolhead": {
+    "mesh": null,
+    "mesh_units": "mm",
+    "mesh_offset": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy_deg": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "tcp": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotvec_rad": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "payload_kg": 0.0,
+    "color": "#d0d0d0"
+  },
+  "objects": [
+    {
+      "id": "table_top",
+      "mesh": "models/table_top.stl",
+      "mesh_units": "mm",
+      "pose": {
+        "xyz": [
+          0.3,
+          0.0,
+          -0.01
+        ],
+        "rpy_deg": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "color": "#8a7a5a",
+      "opacity": 1.0,
+      "visible": true
+    }
+  ],
+  "features": [
+    {
+      "id": "wall",
+      "type": "plane",
+      "pose": {
+        "xyz": [
+          -0.2,
+          0.0,
+          0.0
+        ],
+        "rpy_deg": [
+          0.0,
+          90.0,
+          0.0
+        ]
+      }
+    }
+  ],
+  "safety_planes": [
+    {
+      "name": "wall",
+      "feature": "wall",
+      "displacement": 0.0,
+      "mode": "normal",
+      "restrict_elbow": true,
+      "size": [
+        1.5,
+        1.5
+      ],
+      "visible": true
+    },
+    {
+      "name": "table_top",
+      "feature": "base",
+      "displacement": 0.0,
+      "mode": "normal",
+      "restrict_elbow": false,
+      "size": [
+        1.6,
+        1.6
+      ],
+      "visible": true
+    }
+  ],
+  "view": {
+    "camera_position": [
+      1.7,
+      -1.7,
+      1.2
+    ],
+    "camera_target": [
+      0.2,
+      0.0,
+      0.3
+    ]
+  }
+}
