@@ -1,0 +1,76 @@
+ur_rtde 1.6.3 — Introduction / overview
+Source: https://sdurobotics.gitlab.io/ur_rtde/ (MIT) — converted to text for AI context, 'Universal Robots RTDE C++ Interface — ur_rtde 1.6.3 documentation.html'
+
+[Build badge]
+
+------------------------------------------------------------------------
+
+Universal Robots RTDE C++ Interface
+
+A C++ interface for controlling and receiving data from an UR robot using the Real-Time Data Exchange (RTDE). The interface can also by used with python, through the provided python bindings.
+
+How to Cite
+
+If you use ur_rtde in your research, please cite this paper:
+
+    @inproceedings{10871000,
+      author={Lindvig, Anders Prier and Iturrate, Iñigo and Kindler, Uwe and Sloth, Christoffer},
+      booktitle={2025 IEEE/SICE International Symposium on System Integration (SII)},
+      title={ur_rtde: An Interface for Controlling Universal Robots (UR) using the
+      Real-Time Data Exchange(RTDE)}, year={2025}, pages={1118-1123},
+      keywords={Protocols;Linux;C++ languages;System integration;
+      Writing;Manipulators;Real-time systems;Libraries;Timing;MATLAB},
+      doi={10.1109/SII59315.2025.10871000}}
+
+Table of Contents
+
+-   Introduction
+-   FAQ
+-   Guides
+    -   Real-time Setup Guide
+        -   Linux
+        -   Windows
+        -   Setting a real-time priority
+    -   Use with Dockerized UR Simulator
+        -   Install docker
+        -   Build docker image
+        -   Run docker image
+    -   Use with MATLAB
+    -   Use with Robotiq Gripper
+-   Installation
+    -   Quick Install
+    -   Compatible Robots
+    -   Compatible Operating Systems
+    -   Build Instructions
+        -   Linux (Ubuntu) and macOS
+        -   Windows
+-   Examples
+    -   CMake Example
+    -   Basic use
+    -   Use with ExternalControl UR Cap
+    -   Use with custom script
+    -   Record Data Example
+    -   Move Asynchronous Example
+    -   Move Until Contact
+    -   Forcemode Example
+    -   ServoJ Example
+    -   SpeedJ Example
+    -   MoveL Path With Blending Example
+    -   IO Example
+    -   Robotiq Gripper Example
+    -   Jog Example
+-   API Reference
+    -   RTDE Control Interface API
+        -   ur_rtde::RTDEControlInterface
+    -   RTDE Receive Interface API
+        -   ur_rtde::RTDEReceiveInterface
+    -   RTDE IO Interface API
+        -   ur_rtde::RTDEIOInterface
+    -   RTDE Class API
+        -   ur_rtde::RTDE
+    -   Script Client API
+        -   ur_rtde::ScriptClient
+    -   Dashboard Client API
+        -   ur_rtde::DashboardClient
+    -   Robotiq Gripper API
+        -   ur_rtde::RobotiqGripper

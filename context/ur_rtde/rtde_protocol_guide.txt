@@ -1,0 +1,678 @@
+Universal Robots — Real-Time Data Exchange (RTDE) protocol guide (PolyScope)
+Source: https://sdurobotics.gitlab.io/ur_rtde/ (MIT) — converted to text for AI context, 'Real-Time Data Exchange (RTDE) Guide — PolyScope Tutorials documentation.html'
+
+Real-Time Data Exchange (RTDE) Guide
+
+Introduction
+
+The Real-Time Data Exchange (RTDE) interface provides a way to synchronize external applications with the UR controller over a standard TCP/IP connection, without breaking any real-time properties of the UR controller. This functionality is useful for interacting with fieldbus drivers (e.g., Ethernet/IP), manipulating robot I/O, and plotting robot status (e.g., robot trajectories). The RTDE interface is by default available when the UR controller is running.
+
+The synchronization is configurable and can involve the following data:
+
+-   Output: robot-, joint-, tool- and safety status, analog and digital I/O’s, and general-purpose registers.
+
+-   Input: digital and analog outputs and general-purpose input registers.
+
+The RTDE functionality is split into two stages: a setup procedure and a synchronization loop. On connection to the RTDE interface, the client sets up the variables to be synchronized. The client sends a setup list of named input and output fields to be included in the data synchronization packages. This list is known as a recipe. Each successfully configured input recipe receives a unique recipe ID. Supported field names and their associated data types are listed below.
+
+When the synchronization loop starts, the RTDE interface sends the requested data to the client in the specified order. The client sends updated inputs to the RTDE interface when values change. Data synchronization uses serialized binary data. Packages share a general structure with a header and a payload, if applicable.
+
+Key Features
+
+-   Real-time synchronization: The RTDE can generate output messages at a frequency as high as the real-time control loop frequency (500 Hz on e-Series and ur-Series robots). However, if the controller lacks computational resources, it will skip some output packages and only send the most recent data.
+
+-   Input messages: Variables in the controller can be updated via multiple messages. Inputs retain their last received value, and only one RTDE client can control a specific variable at any time.
+
+-   Runtime environment: An RTDE client can run on the UR Control Box PC or any external PC. Running the RTDE client on the Control Box avoids network latency but may compete with the UR controller for resources.
+
+-   Protocol changes: The RTDE protocol may be updated by UR. RTDE clients can request specific protocol versions to ensure compatibility.
+
+-   Security: Connecting an RTDE client from an external PC requires enabling the RTDE service in the robot security settings.
+
+Additional Resources
+
+Reference implementation for the RTDE protocol is available in the GitHub repository. API documentation for the Python library is available on the RTDE Client Python Module page
+
+Field Names and Associated Types
+
+Robot Controller Inputs
+
+  Name                               Type       Comment                                                                                                           Introduced in Version
+  ---------------------------------- ---------- ----------------------------------------------------------------------------------------------------------------- -----------------------
+  speed_slider_mask                  UINT32     0 = don’t change speed slider, 1 = use speed_slider_fraction to set speed slider value                            
+  speed_slider_fraction              DOUBLE     New speed slider value                                                                                            
+  standard_digital_output_mask       UINT8      Standard digital output bit mask                                                                                  
+  standard_digital_output            UINT8      Standard digital outputs                                                                                          
+  configurable_digital_output_mask   UINT8      Configurable digital output bit mask                                                                              
+  configurable_digital_output        UINT8      Configurable digital outputs                                                                                      
+  standard_analog_output_mask        UINT8      Standard analog output mask (Bits 0-1: standard_analog_output_0 | standard_analog_output_1)                       
+  standard_analog_output_type        UINT8      Output domain {0=current[mA], 1=voltage[V]} (Bits 0-1: standard_analog_output_0 | standard_analog_output_1)       
+  standard_analog_output_0           DOUBLE     Standard analog output 0 (ratio) [0..1]                                                                           
+  standard_analog_output_1           DOUBLE     Standard analog output 1 (ratio) [0..1]                                                                           
+  input_bit_registers0_to_31         UINT32     General purpose bits reserved for Fieldbus/PLC interface usage                                                    
+  input_bit_registers32_to_63        UINT32     General purpose bits reserved for Fieldbus/PLC interface usage                                                    
+  input_bit_register_X               BOOL       64 general purpose bits (X: [64..127]) reserved for external RTDE clients                                         5.3.0
+  input_int_register_X               INT32      48 general purpose integer registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)   [24..47] 5.3.0
+  input_double_register_X            DOUBLE     48 general purpose double registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)    [24..47] 5.3.0
+  external_force_torque              VECTOR6D   Input external wrench when using ft_rtde_input_enable built-in                                                    
+
+Robot Controller Outputs
+
+NOTE: The robot controller requires that the client subscribes to at least one output. The client should read data periodically from the socket. The connection is closed by the robot controller when the receive buffer overflows.
+
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| Name                                    | Type            | Comment                                                                                                                                                                           | Introduced in Version                |
++=========================================+=================+===================================================================================================================================================================================+======================================+
+| timestamp                               | DOUBLE          | Time elapsed since the controller was started [s]                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_q                                | VECTOR6D        | Target joint positions                                                                                                                                                            |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_qd                               | VECTOR6D        | Target joint velocities                                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_qdd                              | VECTOR6D        | Target joint accelerations                                                                                                                                                        |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_current                          | VECTOR6D        | Target joint currents                                                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_moment                           | VECTOR6D        | Target joint moments (torques)                                                                                                                                                    |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_q                                | VECTOR6D        | Actual joint positions                                                                                                                                                            |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_qd                               | VECTOR6D        | Actual joint velocities                                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_current                          | VECTOR6D        | Actual joint currents                                                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_current_window                   | VECTOR6D        | Allowed deviations from target currents                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_current_as_torque                | VECTOR6D        | Actual joint currents converted to torques                                                                                                                                        | 5.23.0 / 10.11.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| joint_control_output                    | VECTOR6D        | Joint control currents                                                                                                                                                            |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_TCP_pose                         | VECTOR6D        | Actual Cartesian coordinates of the tool: (x,y,z,rx,ry,rz) where rx, ry and rz is a rotation vector representation of the tool orientation                                        |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_TCP_speed                        | VECTOR6D        | Actual speed of the tool in Cartesian coordinates. The speed is given in [m/s] and the rotational part of the TCP speed (rx, ry, rz) is the angular velocity given in [rad/s]     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_TCP_force                        | VECTOR6D        | Generalized forces in the TCP. It compensates the measurement for forces and torques generated by the payload                                                                     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_TCP_pose                         | VECTOR6D        | Target Cartesian coordinates of the tool: (x,y,z,rx,ry,rz), where rx, ry and rz is a rotation vector representation of the tool orientation                                       |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_TCP_speed                        | VECTOR6D        | Target speed of the tool in Cartesian coordinates. The speed is given in [m/s] and the rotational part of the TCP speed (rx, ry, rz) is the angular velocity given in [rad/s]     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tcp_offset                              | VECTOR6D        | Actual TCP offset: (x,y,z,rx,ry,rz). Transformation from the output flange coordinate system to the TCP                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_TCP_acceleration                 | VECTOR6D        | Actual TCP acceleration calculated from joint velocities and accelerations. The acceleration is given in [m/s²] and the rotational part is angular acceleration given in [rad/s²] | 5.23.0 / 10.11.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_TCP_acceleration                 | VECTOR6D        | Target TCP acceleration. The acceleration is given in [m/s²] and the rotational part is angular acceleration given in [rad/s²]                                                    | 5.23.0 / 10.11.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_digital_input_bits               | UINT64          | Current state of the digital inputs (0-7: Standard, 8-15: Configurable, 16-17: Tool)                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_configurable_digital_input_bits  | UINT64          | Current state of the configurable digital inputs                                                                                                                                  |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| joint_temperatures                      | VECTOR6D        | Temperature of each joint in degrees Celsius                                                                                                                                      |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_execution_time                   | DOUBLE          | Controller real-time thread execution time [ms]                                                                                                                                   |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_execution_time                   | DOUBLE          | Controller real-time thread desired execution time [ms]                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| robot_mode                              | INT32           | Robot mode                                                                                                                                                                        |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| joint_mode                              | VECTOR6INT32    | Joints control modes                                                                                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| safety_mode                             | INT32           | Safety mode (deprecated - use safety_status instead)                                                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| safety_status                           | INT32           | Safety status                                                                                                                                                                     | 5.4.0                                |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_tool_accelerometer               | VECTOR3D        | Tool x, y, and z accelerometer values                                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| speed_scaling                           | DOUBLE          | Speed scaling of the trajectory limiter                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_speed_fraction                   | DOUBLE          | Target speed fraction                                                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_momentum                         | DOUBLE          | Norm of Cartesian linear momentum                                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_main_voltage                     | DOUBLE          | Safety Control Board: Main voltage                                                                                                                                                |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_robot_voltage                    | DOUBLE          | Safety Control Board: Robot voltage (48V)                                                                                                                                         |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_robot_current                    | DOUBLE          | Safety Control Board: Robot current                                                                                                                                               |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_joint_voltage                    | VECTOR6D        | Actual joint voltages [V]                                                                                                                                                         |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_digital_output_bits              | UINT64          | Current state of the digital outputs (0-7: Standard, 8-15: Configurable, 16-17: Tool)                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_configurable_digital_output_bits | UINT64          | Current state of the configurable digital outputs                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| runtime_state                           | UINT32          | Program state                                                                                                                                                                     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| elbow_position                          | VECTOR3D        | Position of robot elbow in Cartesian Base Coordinates                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| elbow_velocity                          | VECTOR3D        | Velocity of robot elbow in Cartesian Base Coordinates                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| robot_status_bits                       | UINT32          | Bits 0-3: Is power on, Is program running, Is teach button pressed, Is power button                                                                                               |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| safety_status_bits                      | UINT32          | Bits 0-11: Is normal mode, Is reduced mode, Is protective stopped, Is recovery mode,                                                                                              | 5.25.0 / 10.12.0 Is 3PE input active |
+|                                         |                 | Is safeguard stopped, Is system emergency stopped, Is robot emergency stopped, Is emergency stopped,                                                                              |                                      |
+|                                         |                 | Is violation, Is fault, Is stopped due to safety, Is 3PE input active                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| analog_io_types                         | UINT32          | Bits 0-3: analog input 0, analog input 1, analog output 0, analog output 1 (0=current[mA], 1=voltage[V])                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| standard_analog_input0                  | DOUBLE          | Standard analog input 0 [mA or V]                                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| standard_analog_input1                  | DOUBLE          | Standard analog input 1 [mA or V]                                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| standard_analog_output0                 | DOUBLE          | Standard analog output 0 [mA or V]                                                                                                                                                |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| standard_analog_output1                 | DOUBLE          | Standard analog output 1 [mA or V]                                                                                                                                                |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| io_current                              | DOUBLE          | I/O current [mA]                                                                                                                                                                  |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| input_bit_registers0_to_31              | UINT32          | General purpose bits reserved for Fieldbus/PLC interface                                                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| input_bit_registers32_to_63             | UINT32          | General purpose bits reserved for Fieldbus/PLC interface                                                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| input_bit_register_X                    | BOOL            | 64 general purpose bits (X: [64..127]) reserved for external RTDE clients                                                                                                         | 5.3.0                                |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| input_int_register_X                    | INT32           | 48 general purpose integer registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)                                                                   | [24..47] 5.3.0                       |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| input_double_register_X                 | DOUBLE          | 48 general purpose double registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)                                                                    | [24..47] 5.3.0                       |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| output_bit_registers0_to_31             | UINT32          | General purpose bits reserved for Fieldbus/PLC interface                                                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| output_bit_registers32_to_63            | UINT32          | General purpose bits reserved for Fieldbus/PLC interface                                                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| output_bit_register_X                   | BOOL            | 64 general purpose bits (X: [64..127]) reserved for external RTDE clients                                                                                                         | 5.3.0                                |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| output_int_register_X                   | INT32           | 48 general purpose integer registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)                                                                   | [24..47] 5.3.0                       |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| output_double_register_X                | DOUBLE          | 48 general purpose double registers (X: [0..23] reserved for Fieldbus/PLC, [24..47] for external RTDE clients)                                                                    | [24..47] 5.3.0                       |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_robot_energy_consumed            | DOUBLE          | Robot Arm energy consumption since controller startup [Wh].                                                                                                                       | 5.23.0 / 10.11.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| actual_robot_braking_energy_dissipated  | DOUBLE          | Robot Arm braking energy dissipated since controller startup [Wh]. This energy is flowing back into the Control Box and gets dissipated as heat.                                  | 5.23.0 / 10.11.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| encoder0_raw                            | INT32           | Raw encoder0 counter with range of [-2³¹, 2³¹]                                                                                                                                    |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| encoder1_raw                            | INT32           | Raw encoder1 counter with range of [-2³¹, 2³¹]                                                                                                                                    |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| euromap67_input_bits                    | UINT32          | Euromap67 input bits                                                                                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| euromap67_output_bits                   | UINT32          | Euromap67 output bits                                                                                                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| euromap67_24V_voltage                   | DOUBLE          | Euromap 24V voltage [V]                                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| euromap67_24V_current                   | DOUBLE          | Euromap 24V current [mA]                                                                                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_mode                               | UINT32          | One of tool mode constants                                                                                                                                                        |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_analog_input_types                 | UINT32          | Output domain (0=current[mA], 1=voltage[V]) Bits 0-1: Analog inputs                                                                                                               |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_analog_input0                      | DOUBLE          | Tool analog input 0 [mA or V]                                                                                                                                                     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_analog_input1                      | DOUBLE          | Tool analog input 1 [mA or V]                                                                                                                                                     |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_output_voltage                     | INT32           | Tool output voltage [V]                                                                                                                                                           |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_output_current                     | DOUBLE          | Tool current [mA]                                                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_temperature                        | DOUBLE          | Tool temperature in degrees Celsius                                                                                                                                               |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_output_mode                        | UINT8           | The current output mode for tool digital outputs (0=Output, 1=Power)                                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_digital_output0_mode               | UINT8           | The current mode of digital output 0 (0=Disabled, 1=Sinking current, 2=Sourcing current, 3=Push/Pull)                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tool_digital_output1_mode               | UINT8           | The current mode of digital output 1 (0=Disabled, 1=Sinking current, 2=Sourcing current, 3=Push/Pull)                                                                             |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| tcp_force_scalar                        | DOUBLE          | TCP force scalar [N]                                                                                                                                                              |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| joint_position_deviation_ratio          | DOUBLE          | A C153 or C159 protective stop is triggered if the value is ever equal to or exceeds 1.0                                                                                          |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| collision_detection_ratio               | DOUBLE          | A C157 or C158 protective stop is triggered if the value is ever equal to or exceeds 1.0                                                                                          | 5.15.0                               |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| ft_raw_wrench                           | VECTOR6D        | Raw force and torque measurement given in the Tool Flange frame.                                                                                                                  | 5.9.0                                |
+|                                         |                 | Not compensated for forces and torques caused by the payload. Not zeroed by zero_ftsensor().                                                                                      |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| wrench_calc_from_currents               | VECTOR6D        | The forces and torques derived from the joint currents                                                                                                                            |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| payload                                 | DOUBLE          | Payload mass [kg]                                                                                                                                                                 |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| payload_cog                             | VECTOR3D        | Payload Center of Gravity (CoGx, CoGy, CoGz) [m]                                                                                                                                  | 5.5.0                                |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| payload_inertia                         | VECTOR6D        | Payload inertia matrix elements (Ixx,Iyy,Izz,Ixy,Ixz,Iyz) [kg*m²]                                                                                                                 | 5.11.0                               |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| script_control_line                     | UINT32          | Script line number that is actually in control of the robot given the robot is locked by one of the threads in the script.                                                        | 5.9.0                                |
+|                                         |                 | If no thread is locking the robot this field is set to ‘0’. Script line number should not be confused with program tree line number displayed on PolyScope.                       |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| time_scale_source                       | INT32           | One of the constants from Time Scale Source                                                                                                                                       | 5.17.0                               |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_gravity                          | VECTOR3D        | Currently active gravity [m/s²] input through the PolyScope mounting screen or using the “set_gravity()” URScript function                                                        | 5.26.0 / 10.12.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| target_base_acceleration                | VECTOR6D        | Currently active external base acceleration input using the “set_base_acceleration()” URScript function.                                                                          | 5.26.0 / 10.12.0                     |
+|                                         |                 | The acceleration is given in [m/s²] and the rotational part is angular acceleration given in [rad/s²].                                                                            |                                      |
+|                                         |                 | It is currently not possible to set the angular acceleration to non-zero values.                                                                                                  |                                      |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+| controller_step                         | UINT64          | Control time steps since URControl executable launch                                                                                                                              | 5.26.0 / 10.13.0                     |
++-----------------------------------------+-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+
+
+Constants
+
+Time Scale Source
+
+List of possible causes for time scaling.
+
+  Value   Description
+  ------- ------------------------------------------------------
+  -1      Other
+  0       Program is not running
+  1       Speed is not scaled
+  2       Joint torque limit reached
+  3       Joint acceleration limit reached
+  4       Power supply limit reached
+  5       Momentum safety limit reached
+  6       Stopping time safety limit reached
+  7       Stopping distance safety limit reached
+  8       Tool speed safety limit reached
+  9       Elbow speed safety limit reached
+  10      Joint speed safety limit reached
+  11      Smooth transition after safety state change
+  12      Stopping distance defined through safety API reached
+  13      User defined tool wrench limit reached
+  14      Scaling due to external axis speed limit
+  15      Scaling due to external axis stopping
+
+Unlisted values are reserved for internal use.
+
+Safety Status
+
+Valid for software versions: 10.12.0, 5.25.0 and later.
+
+  Name                                      Value   Description
+  ----------------------------------------- ------- -------------
+  NORMAL                                    1       
+  REDUCED                                   2       
+  PROTECTIVE_STOP                           3       
+  RECOVERY                                  4       
+  SAFEGUARD_STOP                            5       
+  SYSTEM_EMERGENCY_STOP                     6       
+  ROBOT_EMERGENCY_STOP                      7       
+  VIOLATION                                 8       
+  FAULT                                     9       
+  AUTOMATIC_MODE_SAFEGUARD_STOP             12      
+  SYSTEM_THREE_POSITION_ENABLING_STOP       13      
+  TP_THREE_POSITION_ENABLING_STOP           14      
+  IMMI_EMERGENCY_STOP                       15      
+  IMMI_SAFEGUARD_STOP                       16      
+  PROFISAFE_WAITING_FOR_PARAMETERS          17      
+  PROFISAFE_AUTOMATIC_MODE_SAFEGUARD_STOP   18      
+  PROFISAFE_SAFEGUARD_STOP                  19      
+  PROFISAFE_EMERGENCY_STOP                  20      
+  SAFETY_API_SAFEGUARD_STOP                 22      
+
+Unlisted values are reserved for internal use.
+
+Robot Mode
+
+Valid for software versions: 10.12.0, 5.25.0 and later.
+
+  Name             Value   Description
+  ---------------- ------- ---------------------------------------------------------------------------------------------------------------------------
+  DISCONNECTED     0       Connection with the safety control board is not established.
+  CONFIRM_SAFETY   1       Robot is validating and updating the safety settings.
+  BOOTING          2       Safety control board is booting up and its communication with the other components is being verified.
+  POWER_OFF        3       Robot is ready to boot up the joints.
+  POWER_ON         4       Robot’s joints are booting up.
+  IDLE             5       Robot’s joints are ready (to go to RUNNING or BACKDRIVE modes).
+  BACKDRIVE        6       Robot is in back-drive mode. It is possible to move the robot in a restricted way. Brakes are being released when needed.
+  RUNNING          7       Brakes are fully released. Robot is ready for running a program. In Polyscope, the current safety mode is shown.
+  UPDATING         8       Firmware is being updated
+  POWERING_OFF     9       Robot arm is powering off
+  ARM_BOOTING      10      Robot arm is booting
+  ARM_UPDATING     11      Robot arm is being firmware updated
+
+Unlisted values are reserved for internal use.
+
+Joint Mode
+
+Valid for software versions: 10.12.0, 5.25.0 and later.
+
+  Name                   Value   Description
+  ---------------------- ------- -------------
+  RESET                  235     
+  SHUTTING_DOWN          236     
+  BACKDRIVE              238     
+  POWER_OFF              239     
+  READY_FOR_POWER_OFF    240     
+  NOT_RESPONDING         245     
+  MOTOR_INITIALISATION   246     
+  BOOTING                247     
+  BOOTLOADER             249     
+  VIOLATION              251     
+  FAULT                  252     
+  RUNNING                253     
+  IDLE                   255     
+
+Unlisted values are reserved for internal use.
+
+Program State
+
+Valid for software versions: 10.12.0, 5.25.0 and later.
+
+  Name         Value   Description
+  ------------ ------- -------------
+  STOPPING     0       
+  STOPPED      1       
+  RUNNING      2       
+  PAUSING      3       
+  PAUSED       4       
+  RESUMING     5       
+  RETRACTING   6       
+
+Unlisted values are reserved for internal use.
+
+Data types
+
+  Name            Type                                Size in bits
+  --------------- ----------------------------------- --------------
+  BOOL            0 = False, everything else = True   8
+  UINT8           unsigned integer                    8
+  UINT32          unsigned integer                    32
+  UINT64          unsigned integer                    64
+  INT32           signed integer, two’s complement    32
+  DOUBLE          IEEE 754 floating point             64
+  VECTOR3D        3xDOUBLE                            3x64
+  VECTOR6D        6xDOUBLE                            6x64
+  VECTOR6INT32    6xINT32                             6x32
+  VECTOR6UINT32   6xUINT32                            6x32
+
+Network byte order
+
+Protocol
+
+EE = External Executable
+
+CON = Robot Controller
+
+Output: CON → EE
+
+Input: CON ← EE
+
+Header
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+
+All packages use the header.
+
+Supported package types are:
+
+  Package name                         Package type   ASCII equivalent
+  ------------------------------------ -------------- ------------------
+  RTDE_REQUEST_PROTOCOL_VERSION        86             V
+  RTDE_GET_URCONTROL_VERSION           118            v
+  RTDE_TEXT_MESSAGE                    77             M
+  RTDE_DATA_PACKAGE                    85             U
+  RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS   79             O
+  RTDE_CONTROL_PACKAGE_SETUP_INPUTS    73             I
+  RTDE_CONTROL_PACKAGE_START           83             S
+  RTDE_CONTROL_PACKAGE_PAUSE           80             P
+
+Direction: Bilateral
+
+Return: Not available
+
+RTDE_REQUEST_PROTOCOL_VERSION
+
+  Field name         Data Type
+  ------------------ -----------
+  package size       uint16_t
+  package type       uint8_t
+  protocol version   uint16_t
+
+Request the controller to work with “protocol version”
+
+Direction: EE → CON
+
+Return
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+  accepted       uint8_t
+
+The controller accepts or not, i.e. either 1 (success) or 0 (failed). On success, the EE should speak the specified protocol version and the CON will answer in that version.
+
+RTDE_GET_URCONTROL_VERSION
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+
+Retrieves the CON major, minor, bugfix and build number.
+
+Direction: EE → CON
+
+Return
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+  major          uint32_t
+  minor          uint32_t
+  bugfix         uint32_t
+  build          uint32_t
+
+The major, minor, bugfix and build number.
+
+RTDE_TEXT_MESSAGE (protocol v. 1)
+
+Direction: CON → EE
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+  message type   uint8_t
+  message        string
+
+Direction: EE → CON
+
+  Field name       Data Type
+  ---------------- -----------
+  package size     uint16_t
+  package type     uint8_t
+  message length   uint8_t
+  message          string
+  source length    uint8_t
+  source           string
+  warning level    uint8_t
+
+Send an exception, error, warning or info message.
+
+Warning level: EXCEPTION_MESSAGE, ERROR_MESSAGE, WARNING_MESSAGE, INFO_MESSAGE
+
+EE→CON: Exceptions indicate EE program failure without recovery possibilities. Error, warning and info will end up in the PolyScope log.
+
+CON → EE: Indicates mainly different kinds of protocol failures.
+
+Direction: See above
+
+Return: Not available.
+
+RTDE_TEXT_MESSAGE (protocol v. 2)
+
+  Field name       Data Type
+  ---------------- -----------
+  package size     uint16_t
+  package type     uint8_t
+  message length   uint8_t
+  message          string
+  source length    uint8_t
+  source           string
+  warning level    uint8_t
+
+Send an exception, error, warning or info message.
+
+Warning level: EXCEPTION_MESSAGE, ERROR_MESSAGE, WARNING_MESSAGE, INFO_MESSAGE
+
+EE→CON: Exceptions indicate EE program failure without recovery possibilities. Error, warning and info will end up in the PolyScope log.
+
+CON → EE: Indicates mainly different kinds of protocol failures.
+
+Direction: Bilateral
+
+Return: Not available.
+
+RTDE_DATA_PACKAGE
+
+  Field name     Data Type
+  -------------- -------------
+  package size   uint16_t
+  package type   uint8_t
+  recipe id      uint8_t
+  <variable>     <data type>
+
+An update to the CON/EE inputs respectively.
+
+The <variable>s are packaged/serialized binary and match the type returned by the SETUP_OUTPUTS or SETUP_INPUTS requests.
+
+Direction: Bilateral
+
+Return: Not available
+
+RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS (protocol v. 1)
+
+  Field name       Data Type
+  ---------------- -----------
+  package size     uint16_t
+  package type     uint8_t
+  variable names   string
+
+Set up the outputs recipe. At the moment the CON only supports one output recipe. The package should contain all desired output variables. The variable names are a comma-separated list of variable name strings.
+
+Direction: EE → CON
+
+Return
+
+  Field name       Data Type
+  ---------------- -----------
+  package size     uint16_t
+  package type     uint8_t
+  variable types   string
+
+Returns the variable types in the same order as they were supplied in the request.
+
+Variable types: VECTOR6D, VECTOR3D, VECTOR6INT32, VECTOR6UINT32, DOUBLE, UINT64, UINT32, INT32, BOOL, UINT8
+
+If a variable is not available, then the variable type will be “NOT_FOUND”.
+
+In case of one or more “NOT_FOUND” return values, the recipe is considered invalid and the RTDE will not output this data.
+
+RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS (protocol v. 2)
+
+  Field name         Data Type
+  ------------------ -----------
+  package size       uint16_t
+  package type       uint8_t
+  output frequency   double
+  variable names     string
+
+Set up the outputs recipe. At the moment the CON only supports one output recipe and the output frequency is configurable. The frequency must be between 1 and 500 Hz and the output rate will be according to floor(500 / frequency).
+
+The package should contain all desired output variables.
+
+The variable names are a comma-separated list of variable name strings.
+
+Direction: EE → CON
+
+Return
+
+  Field name         Data Type
+  ------------------ -----------
+  package size       uint16_t
+  package type       uint8_t
+  output recipe id   uint8_t
+  variable types     string
+
+Returns the variable types in the same order as they were supplied in the request.
+
+Variable types: VECTOR6D, VECTOR3D, VECTOR6INT32, VECTOR6UINT32, DOUBLE, UINT64, UINT32, INT32, BOOL, UINT8
+
+If a variable is not available, then the variable type will be “NOT_FOUND”.
+
+In case of one or more “NOT_FOUND” return values, the recipe is considered invalid and the RTDE will not output this data (output recipe id = 0).
+
+RTDE_CONTROL_PACKAGE_SETUP_INPUTS
+
+  Field name       Data Type
+  ---------------- -----------
+  package size     uint16_t
+  package type     uint8_t
+  variable names   string
+
+Set up a CON input recipe. The CON supports 255 different input recipes (0 is reserved). The variable names are a comma-separated list of variable name strings.
+
+Direction: EE → CON
+
+Return
+
+  Field name        Data Type
+  ----------------- -----------
+  package size      uint16_t
+  package type      uint8_t
+  input recipe id   uint8_t
+  variable types    string
+
+Returns the variable types in the same order as they were supplied in the request.
+
+Variable types: VECTOR6D, VECTOR3D, VECTOR6INT32, VECTOR6UINT32, DOUBLE, UINT64, UINT32, INT32, BOOL, UINT8
+
+If a variable has been claimed by another EE, then the variable type will be “IN_USE”.
+
+If a variable is not available, then the variable type will be “NOT_FOUND”.
+
+In case of one or more “IN_USE” or “NOT_FOUND” return values, the recipe is considered invalid (input recipe id = 0).
+
+RTDE_CONTROL_PACKAGE_START
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+
+Request the controller to start sending output updates. This will fail if e.g. an output package has not been configured yet.
+
+Direction: EE → CON
+
+Return
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+  accepted       uint8_t
+
+The CON accepts or not. Either 1 (success) or 0 (failed).
+
+RTDE_CONTROL_PACKAGE_PAUSE
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+
+Request the CON to pause sending output updates.
+
+Direction: EE → CON
+
+Return
+
+  Field name     Data Type
+  -------------- -----------
+  package size   uint16_t
+  package type   uint8_t
+  accepted       uint8_t
+
+The CON will always accept a pause command and return a 1 (success).

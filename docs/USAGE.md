@@ -345,3 +345,19 @@ every waypoint at low speed (speed slider down) before running at full speed.
 docker compose up -d ursim viewer`. The code lives in the repo, not in the
 container image, so updates are instant. If the instructor announces a new
 image version, `docker compose up` downloads it by itself.
+
+## 8. Working with an AI assistant
+
+Use whatever you normally use, but give it the course context first —
+otherwise it will invent methods and units. `context/README.md` explains
+which file to hand to which tool: at minimum `context/INSTRUCTIONS.md` (the
+rules) and `context/KNOWLEDGE.md` (the API and the facts). Editor tools that
+read the repo (Claude Code, Codex, Cursor, Copilot, …) find `AGENTS.md`,
+`CLAUDE.md` and `.github/copilot-instructions.md` by themselves. After a
+`git pull`, run `./context/make_source_snapshot.sh` to refresh
+`context/framework_source.md`.
+
+Two things the AI cannot know unless you tell it: your current
+`workspace.json` (paste `ws.describe()` or the file) and the tool you have
+mounted (payload, TCP). If it proposes a method that is not in
+`context/KNOWLEDGE.md` §4, it does not exist.

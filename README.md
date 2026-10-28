@@ -11,6 +11,11 @@ first start; checks. Do this before the first session.
 robot, the 3D viewer (scenes, models, toolheads, safety planes), PolyScope
 programs → USB → pendant.
 
+**→ [context/](context/README.md)** — knowledge base for your AI assistant
+(ChatGPT, Claude, Copilot, Cursor, …): instructions, API facts, the framework
+source as one file, the ur_rtde docs and the UR5e user manual. Give it to
+your tool before you let it write robot code.
+
 ## In short
 
 Start the simulator and the 3D viewer:
@@ -71,6 +76,8 @@ scenes/          viewer scenes (scene.json + models/)
 toolheads/       toolhead presets for the viewer (mesh + TCP)
 programs/        where the simulator saves PolyScope programs (.urp) — git-ignored
 students/        your work: students/<your-name>/ — git-ignored
+context/         for your AI assistant: INSTRUCTIONS.md, KNOWLEDGE.md, framework_source.md, ur_rtde docs, UR5e manual
+AGENTS.md / CLAUDE.md / .github/copilot-instructions.md   picked up automatically by editor AI tools; they point into context/
 docker-compose.yml   ursim (simulator) · dev (Python shell) · viewer (3D)
 Start UR5e Sim.command / .bat   double-click launchers (optional)
 ```
