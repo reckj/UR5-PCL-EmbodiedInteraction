@@ -25,17 +25,35 @@ is about *how* to help.
 - Only the packages in the image are available: stdlib, `numpy`, `ur_rtde`,
   `viser`, `trimesh`. Never propose `pip install` (it does not persist).
 - Start from the templates: copy the closest file in
-  `examples/function_templates/` into `students/<name>/` and modify it. Keep
-  the shape of a template: `Workspace.load()` → `with Robot(...) as robot:` →
-  `move_joints(ws.home_joints)` first and last.
+  `examples/function_templates/` into `students/<name>/` and modify it. The
+  template shape — `Workspace.load()` → `with Robot(...) as robot:` →
+  `move_joints(ws.home_joints)` first and last — is a good default; projects
+  may outgrow it (own modules, state machines, sensor loops), that is fine as
+  long as motion still goes through `Robot`.
 
-## 2. Positions come from the taught workspace
+## 2. Positions: start from the taught workspace, absolute is fine too
 
-- Students describe positions as **fractions of the taught box**
-  (`ws.pose(u, v, w)`, `ws.grid(...)`, `ws.line(...)`), not as absolute
-  metres. Never hard-code Base-frame coordinates or orientations you have not
-  read back from the robot; the only orientation to use is the taught one
-  (`ws.orientation`, built into `ws.pose`).
+- The templates describe positions as **fractions of the taught box**
+  (`ws.pose(u, v, w)`, `ws.grid(...)`, `ws.line(...)`). That is the easiest
+  starting point and keeps a script portable between the simulator box and
+  the lab box, so prefer it for first versions and for anything grid- or
+  area-shaped.
+- **Absolute poses are a normal part of projects**, not an exception: a
+  measured fixture position, a pose read back with `robot.pose()`, a
+  waypoint taught on the pendant, coordinates computed from the student's
+  own geometry, a path from a drawing or a point cloud. Use them as plain
+  `[x, y, z, rx, ry, rz]` in metres/rad, Base frame, with `move_to` /
+  `move_through` / `grid_poses` / `line_poses`. They still have to lie inside
+  the active safety box (the taught `Workspace` if passed as `profile`,
+  otherwise the default profile's box) — if a `SafetyViolation` says they
+  don't, the fix is to check the numbers or re-teach a bigger box, not to
+  drop the profile.
+- Orientations: the taught one (`ws.orientation`, built into `ws.pose`) is
+  the safe default. Other orientations are allowed when the process needs
+  them (tilted tool, side approach); build them from a pose read back from the
+  robot or from the pendant's Rotation Vector readout rather than guessing a
+  rotation vector, and let the student test them at low speed in the sim
+  first. Mixing frames (degrees, Euler, a different base) is the usual bug.
 - If the student has no `workspace.json`: `python
   examples/function_templates/00_teach_workspace.py` (add `--demo` for a
   quick simulator box). Do not write a workspace file by hand.
@@ -70,7 +88,7 @@ is about *how* to help.
   that disables, catches-and-ignores, or works around `SafetyViolation`
   (catching it to *print* the reason, as template 08 does, is fine).
 - `SafetyViolation` means the plan was wrong, not the check: fix the pose,
-  fraction or speed. The real-arm box is fixed by the lab profile
+  fraction or speed (or teach a larger workspace). The real-arm box is fixed by the lab profile
   (`cart_against_wall`); a taught box can only make it smaller.
 - Do not add safety warnings, disclaimers or extra "safety rules" to the
   student's code or to your answers beyond what `docs/` and this file say.
@@ -100,8 +118,8 @@ is about *how* to help.
   along in the viewer (http://localhost:7001/).
 - When the student describes a fabrication process (dipping, stamping,
   drawing, scanning, placing…), decompose it into: home → a sequence of
-  `ws.pose`/`ws.grid`/`ws.line` targets → a pause or I/O action at each →
-  home. Point out where a sensor or output would plug in
+  targets (`ws.pose`/`ws.grid`/`ws.line`, or absolute poses from the
+  student's measurements/geometry) → a pause or I/O action at each → home. Point out where a sensor or output would plug in
   (`read_digital_in`, `set_digital_out`) and what their timing assumptions are
   (`time.sleep` is the only timing primitive; there is no blending, the arm
   stops at every pose).

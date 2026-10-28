@@ -8,7 +8,7 @@ simulated robot, and later on the real arm.
 Before doing anything else, read:
 
 1. `context/INSTRUCTIONS.md` — the rules for assisting here (use the
-   framework API only, fractions of the taught workspace, metres/radians,
+   framework API only, taught workspace or absolute poses in metres/radians,
    sim first, never bypass `SafetyViolation`, no invented methods).
 2. `context/KNOWLEDGE.md` — the facts: environment, full `Robot` /
    `Workspace` API, safety profiles, lab robot, typical errors.
