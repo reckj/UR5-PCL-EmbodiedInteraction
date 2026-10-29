@@ -177,6 +177,20 @@ Run the templates in order once — `02_move_joints.py` (moveJ),
 `06/07` I/O, `08_safety_rejections.py` (what a rejected move looks like) —
 then copy whatever you need into `students/<name>/`.
 
+Every template (and `grid_process.py`) takes the same flags — `--help` lists
+them: `--target sim|real` (default sim), `--workspace FILE`, `--host`, and for
+the real arm `--payload KG` and `--tcp X Y Z RX RY RZ`. Your own scripts get
+them with two lines:
+
+```python
+from ur5e.cli import argument_parser, robot_kwargs
+
+args = argument_parser(__doc__).parse_args()
+ws = Workspace.load(args.workspace)
+with Robot(**robot_kwargs(args), profile=ws) as robot:
+    ...
+```
+
 ## 3b. The other examples
 
 | File | What it shows | Watch for |
@@ -201,8 +215,10 @@ the host from the `URSIM_HOST` variable (set to `ursim` by compose),
 | | Sim (default) | Real arm (lab, with the instructor) |
 |---|---|---|
 | start shell | `docker compose run --rm dev bash` | `docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash` (`--no-deps`: don't start URSim) |
-| in code | `Robot(target="sim")` | `Robot(target="real", allow_real=True)` + `robot.set_tool(payload_kg, tcp)` before the first move |
-| profile | `sim_open` | `cart_against_wall` — the measured work surface of the cart; moves outside it are rejected |
+| examples / templates | `python examples/function_templates/03_move_to.py` | `python examples/function_templates/03_move_to.py --target real` (+ `--payload KG --tcp …` if a tool is mounted) |
+| in your own code | `Robot(target="sim", profile=ws)` | `Robot(target="real", profile=ws, allow_real=True, payload_kg=…, tcp=…)` — or the `ur5e.cli` lines from §3, which do exactly this for `--target real` |
+| profile | `sim_open` (or the taught box) | `cart_against_wall` — the measured work surface of the cart (or the taught box clipped to it); moves outside it are rejected |
+| workspace | `00_teach_workspace.py --target sim` (or `--demo`) | `00_teach_workspace.py --target real` — teach all four points **over the table**, home included |
 | check | `python scripts/check_connection.py --target sim` | `python scripts/check_connection.py --target real` |
 
 The lab robot's IP is **static: `192.168.1.11`**. If in doubt, the pendant
@@ -246,11 +262,23 @@ that adapter elsewhere.
 
 Real motion is refused
 unless **all** of: `allow_real=True`, the profile is validated (the shipped
-`cart_against_wall` is), and `set_tool(...)` was called with the mounted tool's
-**payload (kg)** and **TCP offset** `[x, y, z, rx, ry, rz]` (m, rad) — the same
-values as the pendant's *Installation → General → TCP / Payload*. The arm must
-be ON, brakes released, and in **Remote Control**. You normally work in
-simulation; driving the real arm happens only in the lab, supervised.
+`cart_against_wall` is), and the tool was declared (`set_tool(...)` or the
+`payload_kg=`/`tcp=` arguments) with the mounted tool's **payload (kg)** and
+**TCP offset** `[x, y, z, rx, ry, rz]` (m, rad) — the same values as the
+pendant's *Installation → General → TCP / Payload*. `--target real` on an
+example does all three (defaults: 0 kg, flange = nothing mounted) and prints a
+`REAL ARM …` line with what it set. Without `--target real` (or without
+`allow_real=True` in your own code) nothing can move the real arm, even with
+`UR_HOST` set. The arm must be ON, brakes released, and in **Remote Control**.
+You normally work in simulation; driving the real arm happens only in the lab,
+supervised.
+
+Where the arm is parked matters: the first target of every script must be
+inside the box. The cell box is x −0.485…−0.201, y −0.286…0.240, z ≤ 0.234 m
+(Base frame, the table in front of the robot) — an arm hanging beyond the
+table's front edge is outside, and a workspace taught there would have no
+overlap with the cell (`WorkspaceError`). Freedrive it over the table before
+teaching.
 
 `scripts/smoke_test_move.py` is wired to the sim host and bypasses the checks —
 it is not meant for the real arm.

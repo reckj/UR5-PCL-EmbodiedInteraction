@@ -11,9 +11,13 @@ wire real sensors. Students replace `process_at_cell` with their actual process.
 
 Run (dev container, URSim ON/STARTED, viewer open to watch):
     python examples/grid_process.py
+    python examples/grid_process.py --target real      # lab, supervised: the grid
+        # starts at the arm's CURRENT pose, so freedrive it over the table first
+        # (inside the cart_against_wall box); --payload/--tcp if a tool is mounted
 """
 
 from ur5e import Robot, grid_poses
+from ur5e.cli import argument_parser, robot_kwargs
 
 ANALOG_PIN = 0
 DIGITAL_PIN = 0
@@ -28,7 +32,8 @@ def process_at_cell(robot: Robot) -> None:
 
 
 def main() -> None:
-    with Robot(target="sim") as robot:
+    args = argument_parser(__doc__).parse_args()
+    with Robot(**robot_kwargs(args)) as robot:
         # Anchor the grid to the current reachable pose. Students re-anchor this
         # to the measured work surface. Small 3x3 grid, 4 cm spacing.
         origin = robot.pose()

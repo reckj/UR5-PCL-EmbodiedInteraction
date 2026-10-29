@@ -14,18 +14,20 @@ What this does: home → hover over the four corners at 30 % height → centre �
 down to 5 % above the surface → up → home.
 
 Usage:  python examples/function_templates/03_move_to.py
+        python examples/function_templates/03_move_to.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 HOVER = 0.3      # fraction of the box height
 LOW = 0.05
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
 
         for u, v in [(0, 0), (1, 0), (1, 1), (0, 1)]:

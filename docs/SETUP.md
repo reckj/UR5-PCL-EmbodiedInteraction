@@ -281,6 +281,19 @@ different network despite the similar look. Set a manual IP on the Ethernet
 adapter and test with `ping` / `nc` outside Docker first — see
 [USAGE.md §4](USAGE.md#4-sim-vs-real-robot).
 
+**`Connecting (receive-only) to 0.0.0.0` / "--target real needs the robot's
+address"**
+`UR_HOST` is not set in this shell. Start it with
+`docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash`, or pass
+`--host 192.168.1.11` to the script.
+
+**In the lab: a script says "Please enable remote control on the robot!" but
+the pendant *is* in Remote Control**
+The script connected to the *simulator*, not the robot — you ran it without
+`--target real` (examples) or with `target="sim"` in your own code, and URSim
+from an earlier `docker compose up` is still running in Local mode. Add
+`--target real`; `docker compose down` if you don't need the sim in the lab.
+
 **`bash: #: No such file or directory` after `docker compose run --rm dev bash`**
 You pasted a command together with a trailing `# comment`. The Mac's default
 zsh passes the `#…` words on to the command. Retype the command without the

@@ -14,19 +14,21 @@ What this does: go home, turn the last joint (wrist 3) +30° and back, and
 go home again. Watch it in the viewer (localhost:7001).
 
 Usage:  python examples/function_templates/02_move_joints.py
+        python examples/function_templates/02_move_joints.py --target real   (lab, supervised)
 """
 
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 DELTA_DEG = 30.0
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         print("going home (taught joints) ...")
         robot.move_joints(ws.home_joints)
 

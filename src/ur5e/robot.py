@@ -41,8 +41,14 @@ class Robot:
     """High-level UR5e handle. Use as a context manager."""
 
     def __init__(self, target: str = "sim", *, profile=None,
-                 allow_real: bool = False, host: str | None = None):
+                 allow_real: bool = False, host: str | None = None,
+                 payload_kg: float | None = None, tcp: Sequence[float] | None = None):
+        """target 'sim' | 'real'; profile: name, SafetyLimits or Workspace;
+        payload_kg / tcp: if given, set_tool() is called right after connecting
+        (what the examples do for --target real)."""
         self.host = host or resolve_host(target)
+        self.target = target
+        self._tool = (payload_kg, tuple(tcp) if tcp is not None else (0, 0, 0, 0, 0, 0))
         if profile is None:
             profile = "sim_open" if target == "sim" else "cart_against_wall"
         if isinstance(profile, Workspace):          # a taught workspace -> its profile
@@ -56,6 +62,13 @@ class Robot:
     def connect(self) -> "Robot":
         self.conn.connect()
         self.motion = MotionController(self.conn, self.limits, allow_real=self._allow_real)
+        payload_kg, tcp = self._tool
+        if payload_kg is not None:
+            self.set_tool(payload_kg, tcp)
+        if self.target == "real" or (self._allow_real and not self.motion.is_sim):
+            print(f"[ur5e] REAL ARM {self.host} — profile '{self.limits.name}', "
+                  f"payload {payload_kg if payload_kg is not None else 'not set'} kg, "
+                  f"TCP {tuple(round(v, 4) for v in tcp) if payload_kg is not None else 'not set'}")
         return self
 
     def disconnect(self) -> None:

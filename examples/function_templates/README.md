@@ -3,6 +3,16 @@
 Short scripts (≈ 30 lines each) that show one thing. Run them in order once,
 then copy whatever you need into `students/<you>/`.
 
+Every template takes the same flags (`--help` lists them):
+
+```
+python examples/function_templates/03_move_to.py                  simulator (default)
+python examples/function_templates/03_move_to.py --target real    the lab arm
+python examples/function_templates/03_move_to.py --target real --payload 0.35 --tcp 0 0.021 0.108 0 0 0
+                                                                  with a mounted tool: mass in kg, TCP in m / rad
+python examples/function_templates/03_move_to.py --workspace workspace.real.json
+```
+
 | Template | Shows | UR name |
 |---|---|---|
 | `00_teach_workspace.py` | teach the work area in 4 steps → `workspace.json` | — |
@@ -14,7 +24,7 @@ then copy whatever you need into `students/<you>/`.
 | `06_digital_io.py` | `read_digital_in`, `set_digital_out`, `set_tool_digital_out` | I/O |
 | `07_analog_io.py` | `read_analog_in`, `set_analog_out` | I/O |
 | `08_safety_rejections.py` | what a rejected move looks like, `SafetyViolation` | — |
-| `09_raw_rtde.py` | the `ur_rtde` objects underneath (`conn.receive/control/io`) — sim only | moveJ raw |
+| `09_raw_rtde.py` | the `ur_rtde` objects underneath (`conn.receive/control/io`) — sim only, refuses `--target real` | moveJ raw |
 
 ## The workspace: teach once, every example scales to it
 
@@ -56,6 +66,33 @@ is additionally clipped to the measured cell (`cart_against_wall`) and keeps
 its speed ceilings — you can make the space smaller, never larger. A
 workspace taught in the sim is refused on the real robot: teach it again
 there (two minutes with freedrive).
+
+## On the real arm (`--target real`, lab, with the instructor)
+
+The same file, one flag. `--target real` connects to `UR_HOST`
+(192.168.1.11 — start the shell with `-e UR_HOST=192.168.1.11`, your laptop
+on the robot's `192.168.1.x` network), enables real-arm motion and declares the
+tool: `--payload` (kg) and `--tcp x y z rx ry rz` (m, rad) — the same values as
+the pendant's *Installation → General → Payload / TCP*. Defaults are 0 kg and
+the flange, i.e. **nothing mounted**; if something is mounted, pass its real
+values, do not guess. The script prints a `REAL ARM …` line with what it set.
+
+Order in the lab:
+
+1. Pendant: robot ON → START, header icon → **Remote Control**, speed slider
+   down (30 %), hand near the stop.
+2. Freedrive the arm **over the table** — the measured cell is
+   x −0.485…−0.201, y −0.286…0.240, z ≤ 0.234 m (`cart_against_wall`);
+   anything parked beyond the table's front edge is outside and would be
+   rejected as a target.
+3. `python examples/function_templates/00_teach_workspace.py --target real`
+   — all four points over the table, `home` included.
+4. `python examples/function_templates/01_read_state.py --target real`
+   (no motion) then `03_move_to.py --target real`, and so on.
+
+The gate behind this (`allow_real=True` + validated profile + payload + TCP)
+is unchanged; the flag only supplies it. Without `--target real` a script can
+never move the real arm, even with `UR_HOST` set.
 
 Flagged assumptions: poses are TCP poses with the pendant's active TCP at
 teaching time; with a long tool, teach `top` and `home` with extra headroom

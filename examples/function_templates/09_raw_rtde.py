@@ -23,15 +23,16 @@ Usage:  python examples/function_templates/09_raw_rtde.py
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"     # keep it that way for raw calls
 
 
 def main() -> None:
-    if TARGET != "sim":
+    args = argument_parser(__doc__).parse_args()
+    if args.target != "sim":
         raise SystemExit("this template bypasses the safety checks — sim only")
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         rcv, ctl = robot.conn.receive, robot.conn.control
         print("robot mode      :", rcv.getRobotMode(), "(7 = running)")
         print("TCP force [N,Nm]:", [round(v, 1) for v in rcv.getActualTCPForce()])

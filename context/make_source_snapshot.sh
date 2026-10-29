@@ -10,6 +10,7 @@ OUT="$ROOT/context/framework_source.md"
 FILES=(
   src/ur5e/__init__.py
   src/ur5e/robot.py
+  src/ur5e/cli.py
   src/ur5e/workspace.py
   src/ur5e/safety.py
   src/ur5e/motion.py

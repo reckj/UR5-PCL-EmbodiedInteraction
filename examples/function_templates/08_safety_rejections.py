@@ -16,12 +16,13 @@ What this does: an accepted move, then three deliberately bad ones
 readable message — then home.
 
 Usage:  python examples/function_templates/08_safety_rejections.py
+        python examples/function_templates/08_safety_rejections.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 from ur5e.safety import SafetyViolation
 
-TARGET = "sim"
 
 
 def attempt(label, fn):
@@ -33,8 +34,9 @@ def attempt(label, fn):
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
         print("profile:", robot.limits.name, "| tcp speed max", robot.limits.tcp_speed_max, "m/s")
 

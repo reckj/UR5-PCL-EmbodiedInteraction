@@ -1,6 +1,6 @@
 # ur5e framework — source snapshot
 
-Generated 2026-10-28T22:21Z from git 7a755a5
+Generated 2026-10-29T09:16Z from git e90c704
 by context/make_source_snapshot.sh. The files below are the student-facing
 framework (src/ur5e/, without the viewer) and the function templates, verbatim.
 When this snapshot and the repo disagree, the repo is right — regenerate.
@@ -12,8 +12,10 @@ When this snapshot and the repo disagree, the repo is right — regenerate.
 ```python
 """ur5e — UR5e teaching framework (ZHdK Embodied Interaction HS26).
 
-Student-facing surface: ``Robot``, ``grid_poses``, ``line_poses`` — validated for
-student use in simulation (HS26). Real-arm motion stays gated (see motion.py).
+Student-facing surface: ``Robot``, ``Workspace``, ``grid_poses``, ``line_poses``
+(+ ``ur5e.cli`` for the examples' ``--target`` flag) — validated for student use
+in simulation (HS26). Real-arm motion stays gated (see motion.py); the examples
+open the gate only with an explicit ``--target real``.
 """
 
 from __future__ import annotations
@@ -86,8 +88,14 @@ class Robot:
     """High-level UR5e handle. Use as a context manager."""
 
     def __init__(self, target: str = "sim", *, profile=None,
-                 allow_real: bool = False, host: str | None = None):
+                 allow_real: bool = False, host: str | None = None,
+                 payload_kg: float | None = None, tcp: Sequence[float] | None = None):
+        """target 'sim' | 'real'; profile: name, SafetyLimits or Workspace;
+        payload_kg / tcp: if given, set_tool() is called right after connecting
+        (what the examples do for --target real)."""
         self.host = host or resolve_host(target)
+        self.target = target
+        self._tool = (payload_kg, tuple(tcp) if tcp is not None else (0, 0, 0, 0, 0, 0))
         if profile is None:
             profile = "sim_open" if target == "sim" else "cart_against_wall"
         if isinstance(profile, Workspace):          # a taught workspace -> its profile
@@ -101,6 +109,13 @@ class Robot:
     def connect(self) -> "Robot":
         self.conn.connect()
         self.motion = MotionController(self.conn, self.limits, allow_real=self._allow_real)
+        payload_kg, tcp = self._tool
+        if payload_kg is not None:
+            self.set_tool(payload_kg, tcp)
+        if self.target == "real" or (self._allow_real and not self.motion.is_sim):
+            print(f"[ur5e] REAL ARM {self.host} — profile '{self.limits.name}', "
+                  f"payload {payload_kg if payload_kg is not None else 'not set'} kg, "
+                  f"TCP {tuple(round(v, 4) for v in tcp) if payload_kg is not None else 'not set'}")
         return self
 
     def disconnect(self) -> None:
@@ -197,6 +212,69 @@ def line_poses(start, end_xyz, n: int):
         t = k / (n - 1) if n > 1 else 0.0
         out.append([sx + (ex - sx) * t, sy + (ey - sy) * t, sz + (ez - sz) * t, rx, ry, rz])
     return out
+
+```
+
+---
+
+## `src/ur5e/cli.py`
+
+```python
+"""Command-line plumbing shared by the examples: ``--target sim|real`` and friends.
+
+STATUS: validated for student use (HS26) — thin argparse glue, no robot logic.
+
+Every example script does::
+
+    from ur5e import Robot, Workspace
+    from ur5e.cli import argument_parser, robot_kwargs
+
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
+        ...
+
+so the same file runs in the simulator (default) and, in the lab, on the real
+arm with ``--target real``.  ``--target real`` is the conscious act that enables
+real-arm motion: it sets ``allow_real=True`` and declares the tool
+(``--payload`` kg, ``--tcp`` x y z rx ry rz; defaults = nothing mounted, TCP at
+the flange).  The host comes from ``UR_HOST`` (lab: 192.168.1.11) or ``--host``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+
+
+def argument_parser(description: str | None = None) -> argparse.ArgumentParser:
+    """ArgumentParser with the standard example options. Add your own on top."""
+    ap = argparse.ArgumentParser(description=description,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--target", choices=("sim", "real"), default="sim",
+                    help="sim (default) or real = the lab arm, supervised (implies allow_real)")
+    ap.add_argument("--host", default=None,
+                    help="override the robot IP/hostname (default: URSIM_HOST / UR_HOST)")
+    ap.add_argument("--workspace", default=None, metavar="FILE",
+                    help="workspace file (default: workspace.json or $UR5E_WORKSPACE)")
+    ap.add_argument("--payload", type=float, default=0.0, metavar="KG",
+                    help="real only: mass of the mounted tool in kg (default 0.0 = nothing mounted)")
+    ap.add_argument("--tcp", type=float, nargs=6, default=(0, 0, 0, 0, 0, 0),
+                    metavar=("X", "Y", "Z", "RX", "RY", "RZ"),
+                    help="real only: TCP offset in m / rad, as on the pendant (default: flange)")
+    return ap
+
+
+def robot_kwargs(args) -> dict:
+    """Keyword arguments for ``Robot(...)`` from parsed arguments."""
+    kw = {"target": args.target, "host": args.host}
+    if args.target == "real":
+        if not args.host and not os.environ.get("UR_HOST"):
+            raise SystemExit("--target real needs the robot's address: start the shell with\n"
+                             "  docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash\n"
+                             "or pass --host 192.168.1.11")
+        kw.update(allow_real=True, payload_kg=args.payload, tcp=tuple(args.tcp))
+    return kw
 
 ```
 
@@ -923,6 +1001,16 @@ def fk_tcp_position(q):
 Short scripts (≈ 30 lines each) that show one thing. Run them in order once,
 then copy whatever you need into `students/<you>/`.
 
+Every template takes the same flags (`--help` lists them):
+
+```
+python examples/function_templates/03_move_to.py                  simulator (default)
+python examples/function_templates/03_move_to.py --target real    the lab arm
+python examples/function_templates/03_move_to.py --target real --payload 0.35 --tcp 0 0.021 0.108 0 0 0
+                                                                  with a mounted tool: mass in kg, TCP in m / rad
+python examples/function_templates/03_move_to.py --workspace workspace.real.json
+```
+
 | Template | Shows | UR name |
 |---|---|---|
 | `00_teach_workspace.py` | teach the work area in 4 steps → `workspace.json` | — |
@@ -934,7 +1022,7 @@ then copy whatever you need into `students/<you>/`.
 | `06_digital_io.py` | `read_digital_in`, `set_digital_out`, `set_tool_digital_out` | I/O |
 | `07_analog_io.py` | `read_analog_in`, `set_analog_out` | I/O |
 | `08_safety_rejections.py` | what a rejected move looks like, `SafetyViolation` | — |
-| `09_raw_rtde.py` | the `ur_rtde` objects underneath (`conn.receive/control/io`) — sim only | moveJ raw |
+| `09_raw_rtde.py` | the `ur_rtde` objects underneath (`conn.receive/control/io`) — sim only, refuses `--target real` | moveJ raw |
 
 ## The workspace: teach once, every example scales to it
 
@@ -976,6 +1064,33 @@ is additionally clipped to the measured cell (`cart_against_wall`) and keeps
 its speed ceilings — you can make the space smaller, never larger. A
 workspace taught in the sim is refused on the real robot: teach it again
 there (two minutes with freedrive).
+
+## On the real arm (`--target real`, lab, with the instructor)
+
+The same file, one flag. `--target real` connects to `UR_HOST`
+(192.168.1.11 — start the shell with `-e UR_HOST=192.168.1.11`, your laptop
+on the robot's `192.168.1.x` network), enables real-arm motion and declares the
+tool: `--payload` (kg) and `--tcp x y z rx ry rz` (m, rad) — the same values as
+the pendant's *Installation → General → Payload / TCP*. Defaults are 0 kg and
+the flange, i.e. **nothing mounted**; if something is mounted, pass its real
+values, do not guess. The script prints a `REAL ARM …` line with what it set.
+
+Order in the lab:
+
+1. Pendant: robot ON → START, header icon → **Remote Control**, speed slider
+   down (30 %), hand near the stop.
+2. Freedrive the arm **over the table** — the measured cell is
+   x −0.485…−0.201, y −0.286…0.240, z ≤ 0.234 m (`cart_against_wall`);
+   anything parked beyond the table's front edge is outside and would be
+   rejected as a target.
+3. `python examples/function_templates/00_teach_workspace.py --target real`
+   — all four points over the table, `home` included.
+4. `python examples/function_templates/01_read_state.py --target real`
+   (no motion) then `03_move_to.py --target real`, and so on.
+
+The gate behind this (`allow_real=True` + validated profile + payload + TCP)
+is unchanged; the flag only supplies it. Without `--target real` a script can
+never move the real arm, even with `UR_HOST` set.
 
 Flagged assumptions: poses are TCP poses with the pendant's active TCP at
 teaching time; with a long tool, teach `top` and `home` with extra headroom
@@ -1091,20 +1206,22 @@ Also shows where the current pose sits inside the taught workspace, as
 fractions (0..1 along x, y, z of the box).
 
 Usage:  python examples/function_templates/01_read_state.py
+        python examples/function_templates/01_read_state.py --target real   (lab, supervised)
 """
 
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 
 
 def main() -> None:
-    ws = Workspace.load()
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
     print(ws.describe(), "\n")
 
-    with Robot(target=TARGET, profile=ws) as robot:
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         q = robot.joints()
         p = robot.pose()
 
@@ -1145,19 +1262,21 @@ What this does: go home, turn the last joint (wrist 3) +30° and back, and
 go home again. Watch it in the viewer (localhost:7001).
 
 Usage:  python examples/function_templates/02_move_joints.py
+        python examples/function_templates/02_move_joints.py --target real   (lab, supervised)
 """
 
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 DELTA_DEG = 30.0
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         print("going home (taught joints) ...")
         robot.move_joints(ws.home_joints)
 
@@ -1197,18 +1316,20 @@ What this does: home → hover over the four corners at 30 % height → centre �
 down to 5 % above the surface → up → home.
 
 Usage:  python examples/function_templates/03_move_to.py
+        python examples/function_templates/03_move_to.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 HOVER = 0.3      # fraction of the box height
 LOW = 0.05
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
 
         for u, v in [(0, 0), (1, 0), (1, 1), (0, 1)]:
@@ -1250,17 +1371,19 @@ What this does: home → a diagonal line across the area in 6 steps →
 a zig-zag back along the other edge → home.
 
 Usage:  python examples/function_templates/04_move_through.py
+        python examples/function_templates/04_move_through.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 H = 0.2   # height fraction for the whole path
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
 
         diagonal = ws.line((0.1, 0.1, H), (0.9, 0.9, H), n=6)
@@ -1302,13 +1425,14 @@ The loop is yours: move, do something, move on. That is the pattern every
 What this does: home → 3 x 4 grid at 10 % height, dwell at each cell → home.
 
 Usage:  python examples/function_templates/05_grid_poses.py
+        python examples/function_templates/05_grid_poses.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 NX, NY = 3, 4
 
 
@@ -1319,11 +1443,12 @@ def do_something(robot: Robot, k: int) -> None:
 
 
 def main() -> None:
-    ws = Workspace.load()
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
     cells = ws.grid(NX, NY, w=0.1)
     print(f"{len(cells)} cells ({NX} x {NY})")
 
-    with Robot(target=TARGET, profile=ws) as robot:
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
         robot.move_to(ws.pose(0.5, 0.5, 0.5))          # come in from above
         for k, cell in enumerate(cells):
@@ -1359,18 +1484,20 @@ What this does: blink DO0 three times, pulse the tool output once, print
 all eight inputs.
 
 Usage:  python examples/function_templates/06_digital_io.py
+        python examples/function_templates/06_digital_io.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         print("inputs DI0..7:", [robot.read_digital_in(i) for i in range(8)])
 
         for k in range(3):
@@ -1417,19 +1544,21 @@ What this does: print both inputs 10x (half a second apart), ramp AO0 from
 0 to 5 V and back to 0.
 
 Usage:  python examples/function_templates/07_analog_io.py
+        python examples/function_templates/07_analog_io.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 THRESHOLD_V = 2.5
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         for _ in range(10):
             a0, a1 = robot.read_analog_in(0), robot.read_analog_in(1)
             state = "above" if a0 > THRESHOLD_V else "below"
@@ -1471,12 +1600,13 @@ What this does: an accepted move, then three deliberately bad ones
 readable message — then home.
 
 Usage:  python examples/function_templates/08_safety_rejections.py
+        python examples/function_templates/08_safety_rejections.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 from ur5e.safety import SafetyViolation
 
-TARGET = "sim"
 
 
 def attempt(label, fn):
@@ -1488,8 +1618,9 @@ def attempt(label, fn):
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
         print("profile:", robot.limits.name, "| tcp speed max", robot.limits.tcp_speed_max, "m/s")
 
@@ -1548,15 +1679,16 @@ Usage:  python examples/function_templates/09_raw_rtde.py
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"     # keep it that way for raw calls
 
 
 def main() -> None:
-    if TARGET != "sim":
+    args = argument_parser(__doc__).parse_args()
+    if args.target != "sim":
         raise SystemExit("this template bypasses the safety checks — sim only")
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         rcv, ctl = robot.conn.receive, robot.conn.control
         print("robot mode      :", rcv.getRobotMode(), "(7 = running)")
         print("TCP force [N,Nm]:", [round(v, 1) for v in rcv.getActualTCPForce()])
@@ -1595,9 +1727,13 @@ wire real sensors. Students replace `process_at_cell` with their actual process.
 
 Run (dev container, URSim ON/STARTED, viewer open to watch):
     python examples/grid_process.py
+    python examples/grid_process.py --target real      # lab, supervised: the grid
+        # starts at the arm's CURRENT pose, so freedrive it over the table first
+        # (inside the cart_against_wall box); --payload/--tcp if a tool is mounted
 """
 
 from ur5e import Robot, grid_poses
+from ur5e.cli import argument_parser, robot_kwargs
 
 ANALOG_PIN = 0
 DIGITAL_PIN = 0
@@ -1612,7 +1748,8 @@ def process_at_cell(robot: Robot) -> None:
 
 
 def main() -> None:
-    with Robot(target="sim") as robot:
+    args = argument_parser(__doc__).parse_args()
+    with Robot(**robot_kwargs(args)) as robot:
         # Anchor the grid to the current reachable pose. Students re-anchor this
         # to the measured work surface. Small 3x3 grid, 4 cm spacing.
         origin = robot.pose()

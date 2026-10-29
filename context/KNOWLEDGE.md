@@ -106,14 +106,33 @@ from ur5e.safety import SafetyViolation          # the rejection exception
 ### `Robot` (src/ur5e/robot.py) — the student-facing class
 
 ```python
-Robot(target="sim", *, profile=None, allow_real=False, host=None)
+Robot(target="sim", *, profile=None, allow_real=False, host=None,
+      payload_kg=None, tcp=None)
 ```
 - `target`: `"sim"` (host from `URSIM_HOST`, default 127.0.0.1) or `"real"`
   (host from `UR_HOST`). `host=` overrides.
 - `profile`: `None` → `"sim_open"` for sim, `"cart_against_wall"` for real;
   a profile name; a `SafetyLimits`; or a **`Workspace`** (→ `ws.profile(target)`).
+- `payload_kg` / `tcp`: if given, `set_tool(payload_kg, tcp)` runs right after
+  connecting (what `--target real` does). For `target="real"` a
+  `[ur5e] REAL ARM host — profile, payload, TCP` line is printed on connect.
 - Use as a context manager: `with Robot(...) as robot:` connects
   (receive + control + io) and disconnects cleanly, also on exceptions.
+
+### `ur5e.cli` — the examples' command-line flags
+
+```python
+from ur5e.cli import argument_parser, robot_kwargs
+args = argument_parser(__doc__).parse_args()     # --target sim|real  --host  --workspace FILE  --payload KG  --tcp X Y Z RX RY RZ
+ws = Workspace.load(args.workspace)
+with Robot(**robot_kwargs(args), profile=ws) as robot: ...
+```
+`robot_kwargs` returns `{"target", "host"}` for sim and adds
+`allow_real=True, payload_kg, tcp` for `--target real` (defaults 0.0 kg,
+flange). `--target real` without `UR_HOST`/`--host` exits with a message.
+Every file in `examples/` uses this; a student script that copies the three
+lines runs on sim and real with the same flag. `argument_parser` is a normal
+`argparse.ArgumentParser` — add project options to it.
 
 | method | does | units / notes |
 |---|---|---|
@@ -243,9 +262,13 @@ the robot.**
   `192.168.10.x` or the campus Wi-Fi `10.x.x.x` are *other* networks —
   that mismatch is the number-one connection failure. Test from the host
   OS first: `ping 192.168.1.11`, `nc -vz -w 3 192.168.1.11 30004`. In the lab:
-  `docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash` and
-  `Robot(target="real", allow_real=True)` + `robot.set_tool(...)` — only with
-  the instructor present, speed slider down, hand near the e-stop.
+  `docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash`, then
+  any example with `--target real` (own code: `Robot(target="real",
+  allow_real=True, payload_kg=…, tcp=…)` or the `ur5e.cli` lines) — only with
+  the instructor present, speed slider down, hand near the e-stop. The arm must
+  be **over the table** first: the cell box is x −0.485…−0.201,
+  y −0.286…0.240, z ≤ 0.234 m; parked beyond the front edge it is outside,
+  and a workspace taught there has no overlap with the cell.
 - No tool mounted by default (payload 0, TCP 0). A `tool_example` preset
   exists in `toolheads/` (80 mm flange plate + probe, TCP ≈ (0, 21, 108) mm —
   assumed from geometry, not measured).
@@ -286,6 +309,7 @@ sliders. Scene format `ur5e-scene/1` (metres, degrees unless `_rad`).
 | `WorkspaceError: taught on target 'sim' but ... 'real'` | teach again on the real setup |
 | `connection refused` on port 30004 | URSim not started / not ON (an immediate *refused* = the host answered) |
 | `check_connection.py --host 192.168.1.11` **hangs**, then `Could not connect to: 192.168.1.11 at 30004` | laptop not on the robot's subnet (no `192.168.1.x` address on the Ethernet adapter) — fix the IP, verify with `ping`/`nc` outside Docker; not a Docker or code problem |
-| `Connecting (receive-only) to 0.0.0.0` | `UR_HOST` not set — start the shell with `-e UR_HOST=192.168.1.11` or pass `--host` |
+| `Connecting (receive-only) to 0.0.0.0` / `--target real needs the robot's address` | `UR_HOST` not set — start the shell with `-e UR_HOST=192.168.1.11` or pass `--host` |
+| `Please enable remote control on the robot!` although the pendant is in Remote | the script talked to **URSim** (still running from earlier, in Local mode), not the robot: `--target real` missing / `target="sim"` in code |
 | grid cells all `skip` in `grid_process.py` | sim inputs read 0 — expected |
 | `Not an Installation File` on URSim boot | `programs/` holds a `default.installation` from a newer URSim — empty the folder |

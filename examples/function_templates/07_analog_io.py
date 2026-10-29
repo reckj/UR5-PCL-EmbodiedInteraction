@@ -11,19 +11,21 @@ What this does: print both inputs 10x (half a second apart), ramp AO0 from
 0 to 5 V and back to 0.
 
 Usage:  python examples/function_templates/07_analog_io.py
+        python examples/function_templates/07_analog_io.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 THRESHOLD_V = 2.5
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         for _ in range(10):
             a0, a1 = robot.read_analog_in(0), robot.read_analog_in(1)
             state = "above" if a0 > THRESHOLD_V else "below"

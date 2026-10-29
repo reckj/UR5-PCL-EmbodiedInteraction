@@ -13,18 +13,20 @@ What this does: blink DO0 three times, pulse the tool output once, print
 all eight inputs.
 
 Usage:  python examples/function_templates/06_digital_io.py
+        python examples/function_templates/06_digital_io.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         print("inputs DI0..7:", [robot.read_digital_in(i) for i in range(8)])
 
         for k in range(3):

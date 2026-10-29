@@ -26,8 +26,11 @@ is about *how* to help.
   `viser`, `trimesh`. Never propose `pip install` (it does not persist).
 - Start from the templates: copy the closest file in
   `examples/function_templates/` into `students/<name>/` and modify it. The
-  template shape — `Workspace.load()` → `with Robot(...) as robot:` →
-  `move_joints(ws.home_joints)` first and last — is a good default; projects
+  template shape — `argument_parser(__doc__).parse_args()` →
+  `Workspace.load(args.workspace)` → `with Robot(**robot_kwargs(args),
+  profile=ws) as robot:` → `move_joints(ws.home_joints)` first and last — is
+  a good default (keep the `ur5e.cli` lines: they are what makes a script run
+  in the sim and the lab with one flag); projects
   may outgrow it (own modules, state machines, sensor loops), that is fine as
   long as motion still goes through `Robot`.
 
@@ -79,11 +82,12 @@ is about *how* to help.
 
 - Develop and run everything against the simulator (`target="sim"`). A
   script is ready for the lab when it runs cleanly in the sim end-to-end.
-- `target="real"` requires the student to be in the lab with the instructor
-  present; the code additionally needs `allow_real=True` and
-  `robot.set_tool(payload_kg, tcp)` with the **real** mounted tool's values
-  (flag that these must be measured, not guessed), and the host
-  `UR_HOST=192.168.1.11` (and the laptop on the robot's `192.168.1.x`
+- The real arm requires the student to be in the lab with the instructor
+  present. Scripts built on `ur5e.cli` (all examples) switch with
+  `--target real` (+ `--payload KG --tcp …` for a mounted tool — **real**
+  measured values, flag that they must not be guessed); hand-written code
+  needs `Robot(target="real", allow_real=True, payload_kg=…, tcp=…)` (or
+  `set_tool`), and the host `UR_HOST=192.168.1.11` (and the laptop on the robot's `192.168.1.x`
   network — a hanging connect means a network/IP problem, see KNOWLEDGE §7/§9,
   not a code problem). Never add `allow_real=True` to a script by default,
   never set it to work around a `SafetyViolation`, and do not generate code

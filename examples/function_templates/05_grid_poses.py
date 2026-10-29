@@ -15,13 +15,14 @@ The loop is yours: move, do something, move on. That is the pattern every
 What this does: home → 3 x 4 grid at 10 % height, dwell at each cell → home.
 
 Usage:  python examples/function_templates/05_grid_poses.py
+        python examples/function_templates/05_grid_poses.py --target real   (lab, supervised)
 """
 
 import time
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 NX, NY = 3, 4
 
 
@@ -32,11 +33,12 @@ def do_something(robot: Robot, k: int) -> None:
 
 
 def main() -> None:
-    ws = Workspace.load()
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
     cells = ws.grid(NX, NY, w=0.1)
     print(f"{len(cells)} cells ({NX} x {NY})")
 
-    with Robot(target=TARGET, profile=ws) as robot:
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
         robot.move_to(ws.pose(0.5, 0.5, 0.5))          # come in from above
         for k, cell in enumerate(cells):

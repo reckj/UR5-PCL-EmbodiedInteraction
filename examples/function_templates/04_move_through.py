@@ -12,17 +12,19 @@ What this does: home → a diagonal line across the area in 6 steps →
 a zig-zag back along the other edge → home.
 
 Usage:  python examples/function_templates/04_move_through.py
+        python examples/function_templates/04_move_through.py --target real   (lab, supervised)
 """
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 H = 0.2   # height fraction for the whole path
 
 
 def main() -> None:
-    ws = Workspace.load()
-    with Robot(target=TARGET, profile=ws) as robot:
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         robot.move_joints(ws.home_joints)
 
         diagonal = ws.line((0.1, 0.1, H), (0.9, 0.9, H), n=6)

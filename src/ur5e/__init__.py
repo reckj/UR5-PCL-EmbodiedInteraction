@@ -1,7 +1,9 @@
 """ur5e — UR5e teaching framework (ZHdK Embodied Interaction HS26).
 
-Student-facing surface: ``Robot``, ``grid_poses``, ``line_poses`` — validated for
-student use in simulation (HS26). Real-arm motion stays gated (see motion.py).
+Student-facing surface: ``Robot``, ``Workspace``, ``grid_poses``, ``line_poses``
+(+ ``ur5e.cli`` for the examples' ``--target`` flag) — validated for student use
+in simulation (HS26). Real-arm motion stays gated (see motion.py); the examples
+open the gate only with an explicit ``--target real``.
 """
 
 from __future__ import annotations

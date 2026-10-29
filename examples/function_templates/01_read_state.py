@@ -9,20 +9,22 @@ Also shows where the current pose sits inside the taught workspace, as
 fractions (0..1 along x, y, z of the box).
 
 Usage:  python examples/function_templates/01_read_state.py
+        python examples/function_templates/01_read_state.py --target real   (lab, supervised)
 """
 
 import math
 
 from ur5e import Robot, Workspace
+from ur5e.cli import argument_parser, robot_kwargs
 
-TARGET = "sim"
 
 
 def main() -> None:
-    ws = Workspace.load()
+    args = argument_parser(__doc__).parse_args()
+    ws = Workspace.load(args.workspace)
     print(ws.describe(), "\n")
 
-    with Robot(target=TARGET, profile=ws) as robot:
+    with Robot(**robot_kwargs(args), profile=ws) as robot:
         q = robot.joints()
         p = robot.pose()
 
