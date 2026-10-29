@@ -109,10 +109,11 @@ PROFILES = {
     # wall (~180deg). SLOW speeds; tcp_speed_max 0.15 m/s stays under the PolyScope
     # tool-speed limit (0.25 m/s), keeping software stricter than the controller.
     #
-    # VALIDATED: workspace box captured via scripts/teach_workspace.py against the
-    # real cell (front = -X). The box is deliberately conservative (slightly inside
-    # the physical surface) — it will reject moves beyond the captured region.
-    # Re-capture and replace this Box if the cell layout changes.
+    # VALIDATED: x/y of the workspace box captured via scripts/teach_workspace.py
+    # against the real cell (front = -X), deliberately conservative (slightly
+    # inside the physical surface). z max raised from the captured 0.234 m to
+    # 0.60 m on 2026-10-29 (first lab teach: home/top at 0.57 m; nothing above the
+    # table within that height). Re-capture / edit if the cell layout changes.
     "cart_against_wall": SafetyLimits(
         name="cart_against_wall",
         tcp_speed_max=0.15,        # 150 mm/s  (< PolyScope tool-speed limit 250 mm/s)
@@ -120,7 +121,7 @@ PROFILES = {
         joint_speed_max=0.5,
         joint_accel_max=0.8,
         joint_limits=_FULL_JOINTS,
-        workspace=Box(x=(-0.4853, -0.2013), y=(-0.2859, 0.2401), z=(0.0287, 0.2337)),  # captured (teach_workspace)
+        workspace=Box(x=(-0.4853, -0.2013), y=(-0.2859, 0.2401), z=(0.0287, 0.60)),  # x/y captured; z max set 2026-10-29
         payload_max_kg=0.5,
         require_payload=True,
         require_tcp=True,
