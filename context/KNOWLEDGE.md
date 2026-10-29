@@ -151,8 +151,10 @@ lines runs on sim and real with the same flag. `argument_parser` is a normal
 | `robot.limits` | the active `SafetyLimits` | |
 
 Every move is **validated before it is sent**: target inside the profile's
-workspace box (`move_to`: the target xyz; `move_joints`: the flange position
-from forward kinematics), speed/accel ≤ ceilings, joints within ±2π. A
+workspace box (`move_to`: the target xyz, exact; `move_joints`: the flange
+position from nominal forward kinematics, with 5 mm tolerance
+(`FK_TOLERANCE_M`) because the controller's calibrated model differs by up to
+a few mm), speed/accel ≤ ceilings, joints within ±2π. A
 violation raises `SafetyViolation` with a readable message and **nothing
 moves**; values are never clamped.
 

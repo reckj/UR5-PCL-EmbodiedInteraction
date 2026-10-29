@@ -36,10 +36,19 @@ class Box:
     y: tuple[float, float]
     z: tuple[float, float]
 
-    def contains(self, p) -> bool:
-        return (self.x[0] <= p[0] <= self.x[1]
-                and self.y[0] <= p[1] <= self.y[1]
-                and self.z[0] <= p[2] <= self.z[1])
+    def contains(self, p, tol: float = 0.0) -> bool:
+        """True if p=(x,y,z) lies inside the box, grown by `tol` metres on every side."""
+        return (self.x[0] - tol <= p[0] <= self.x[1] + tol
+                and self.y[0] - tol <= p[1] <= self.y[1] + tol
+                and self.z[0] - tol <= p[2] <= self.z[1] + tol)
+
+
+# Joint targets are checked through the NOMINAL UR5e kinematics (kinematics.py),
+# the controller uses its calibrated model: the two differ by up to a few mm
+# (measured 2026-10-29 on the lab arm: 0.2-1.0 mm). A point taught as a box corner
+# therefore sits exactly on the edge and would be rejected without this slack.
+# Cartesian targets (move_to) are controller coordinates and get no tolerance.
+FK_TOLERANCE_M = 0.005
 
 
 @dataclass(frozen=True)
@@ -70,17 +79,17 @@ class SafetyLimits:
             if not (lo <= q[i] <= hi):
                 raise SafetyViolation(
                     f"joint {i} = {q[i]:.3f} rad outside limit [{lo:.3f}, {hi:.3f}]")
-        self.check_workspace(fk_tcp_position(q))
+        self.check_workspace(fk_tcp_position(q), tol=FK_TOLERANCE_M, what="joint target (flange FK)")
 
     def check_pose_target(self, pose) -> None:
         if len(pose) != 6:
             raise SafetyViolation(f"expected 6-element pose, got {len(pose)}")
         self.check_workspace(pose[:3])
 
-    def check_workspace(self, xyz) -> None:
-        if not self.workspace.contains(xyz):
+    def check_workspace(self, xyz, tol: float = 0.0, what: str = "target") -> None:
+        if not self.workspace.contains(xyz, tol):
             raise SafetyViolation(
-                f"target {tuple(round(float(v), 3) for v in xyz)} outside "
+                f"{what} {tuple(round(float(v), 3) for v in xyz)} outside "
                 f"workspace box of profile '{self.name}'")
 
     def check_joint_speed(self, speed, accel) -> None:
