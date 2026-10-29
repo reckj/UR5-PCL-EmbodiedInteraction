@@ -46,6 +46,9 @@ so programs you save in the simulator load on the real pendant. On the pendant
 the version and the robot's IP are under **☰ (top right) → About**:
 *URSoftware 5.9.1…* and *IP address 192.168.1.11*. The IP is static — that is
 what you put into `UR_HOST` in the lab (see [docs/USAGE.md](docs/USAGE.md) §4).
+In the lab your laptop needs a manual address on that network — `192.168.1.1NN`,
+mask `255.255.255.0`, cable in — and `ping 192.168.1.11` must answer *before*
+you start Docker (USAGE §4 has the steps).
 Only the instructor changes the pinned version, after a PolyScope update.
 
 `[screenshot: pendant ☰ → About — version and IP address]`

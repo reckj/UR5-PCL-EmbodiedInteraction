@@ -236,8 +236,13 @@ the robot.**
 
 - UR5e on a steel cart against a wall (~180° usable), controller in the
   cart, work surface ~600 × 500 mm in front at mounting height (z ≈ 0).
-- PolyScope **5.9.1** (hence URSim 5.9.4). Static IP **192.168.1.11**
-  (pendant ☰ → About). Remote Control enabled. In the lab:
+- PolyScope **5.9.1** (hence URSim 5.9.4). Static IP **192.168.1.11**,
+  mask 255.255.255.0 (pendant ☰ → About). Remote Control enabled. The robot
+  sits on its own wired network **without DHCP**: the laptop needs a manual
+  address `192.168.1.1NN/24` on its Ethernet adapter (instructor Mac `.20`).
+  `192.168.10.x` or the campus Wi-Fi `10.x.x.x` are *other* networks —
+  that mismatch is the number-one connection failure. Test from the host
+  OS first: `ping 192.168.1.11`, `nc -vz -w 3 192.168.1.11 30004`. In the lab:
   `docker compose run --rm --no-deps -e UR_HOST=192.168.1.11 dev bash` and
   `Robot(target="real", allow_real=True)` + `robot.set_tool(...)` — only with
   the instructor present, speed slider down, hand near the e-stop.
@@ -279,6 +284,8 @@ sliders. Scene format `ur5e-scene/1` (metres, degrees unless `_rad`).
 | `SafetyViolation: refusing real-arm motion ... allow_real=True` | real arm without `allow_real=True` (deliberate) |
 | `WorkspaceError: no workspace file` | run `00_teach_workspace.py` (`--demo` for a quick sim box) |
 | `WorkspaceError: taught on target 'sim' but ... 'real'` | teach again on the real setup |
-| `connection refused` on port 30004 | URSim not started / not ON |
+| `connection refused` on port 30004 | URSim not started / not ON (an immediate *refused* = the host answered) |
+| `check_connection.py --host 192.168.1.11` **hangs**, then `Could not connect to: 192.168.1.11 at 30004` | laptop not on the robot's subnet (no `192.168.1.x` address on the Ethernet adapter) — fix the IP, verify with `ping`/`nc` outside Docker; not a Docker or code problem |
+| `Connecting (receive-only) to 0.0.0.0` | `UR_HOST` not set — start the shell with `-e UR_HOST=192.168.1.11` or pass `--host` |
 | grid cells all `skip` in `grid_process.py` | sim inputs read 0 — expected |
 | `Not an Installation File` on URSim boot | `programs/` holds a `default.installation` from a newer URSim — empty the folder |

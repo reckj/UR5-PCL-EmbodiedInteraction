@@ -2,7 +2,7 @@
 
 Usage:
     python scripts/check_connection.py --target sim
-    python scripts/check_connection.py --host 192.168.1.10
+    python scripts/check_connection.py --host 192.168.1.11
 """
 
 from __future__ import annotations

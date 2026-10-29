@@ -205,10 +205,45 @@ the host from the `URSIM_HOST` variable (set to `ursim` by compose),
 | profile | `sim_open` | `cart_against_wall` — the measured work surface of the cart; moves outside it are rejected |
 | check | `python scripts/check_connection.py --target sim` | `python scripts/check_connection.py --target real` |
 
-The lab robot's IP is **static: `192.168.1.11`** (your laptop must be on the
-robot's network — the instructor sets that up). If in doubt, the pendant shows
-it under **☰ (top right) → About** — *IP address*, next to the PolyScope
+The lab robot's IP is **static: `192.168.1.11`**. If in doubt, the pendant
+shows it under **☰ (top right) → About** — *IP address*, next to the PolyScope
 version (*URSoftware 5.9.1*, which is why the simulator is pinned to 5.9.4).
+
+### Your laptop must be on the robot's network — check this first
+
+The robot hangs on its own wired network, **`192.168.1.x`**, with no DHCP
+server: a laptop plugged in gets no address by itself, and an address from
+another network (Wi-Fi `10.x.x.x`, or `192.168.10.x` — note the **10**) is
+*not* the same network even though it looks similar. The symptom is always the
+same: `check_connection.py` **hangs** until Ctrl-C and then says `Could not
+connect to: 192.168.1.11 at 30004` (the simulator, when it is off, answers
+*refused* immediately — hanging means "nobody there on that road").
+
+1. Plug the Ethernet cable (USB-C adapter if needed) into the lab switch /
+   the control box. Wi-Fi can stay on.
+2. Give the adapter a **manual IP in the robot's subnet**:
+   - macOS: System Settings → Network → the Ethernet adapter → Details →
+     TCP/IP → *Configure IPv4: Manually* — IP `192.168.1.1NN`, subnet mask
+     `255.255.255.0`, router empty. Pick `NN` from your student number /
+     seat (101…199) so that no two laptops share an address; the instructor's
+     Mac is `.20`, the robot `.11`.
+   - Windows: Settings → Network & Internet → Ethernet → *IP assignment: Edit*
+     → Manual, IPv4 on — same values.
+3. Test **outside Docker**, in a normal terminal:
+
+   ```bash
+   ping -c 3 192.168.1.11
+   nc -vz -w 3 192.168.1.11 30004
+   ```
+
+   (Windows: `ping 192.168.1.11` and `Test-NetConnection 192.168.1.11 -Port 30004`
+   in PowerShell.) Ping replies and `succeeded` on 30004 → the laptop is good;
+   now the Docker command below works. No replies → recheck the IP you set
+   (`ifconfig | grep "inet "` must show a `192.168.1.` line) and the cable.
+
+Set the address back to *DHCP/Automatic* when you leave the lab if you use
+that adapter elsewhere.
+
 Real motion is refused
 unless **all** of: `allow_real=True`, the profile is validated (the shipped
 `cart_against_wall` is), and `set_tool(...)` was called with the mounted tool's

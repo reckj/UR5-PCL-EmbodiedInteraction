@@ -272,6 +272,15 @@ pendant tab and rerun. A *blank* robot mode or `connected : False` right after
 boot means the same thing — URSim takes a moment after START. `robot mode : 7`
 in the check output = running, ready.
 
+**In the lab: `check_connection.py --target real` hangs, then "Could not
+connect to: 192.168.1.11 at 30004"**
+Your laptop is not on the robot's network. Hanging (instead of an immediate
+*refused*) means the address is unreachable: the laptop has no `192.168.1.x`
+address — Wi-Fi gives `10.x.x.x`, and a leftover `192.168.10.x` setting is a
+different network despite the similar look. Set a manual IP on the Ethernet
+adapter and test with `ping` / `nc` outside Docker first — see
+[USAGE.md §4](USAGE.md#4-sim-vs-real-robot).
+
 **`bash: #: No such file or directory` after `docker compose run --rm dev bash`**
 You pasted a command together with a trailing `# comment`. The Mac's default
 zsh passes the `#…` words on to the command. Retype the command without the

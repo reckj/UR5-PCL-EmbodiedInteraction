@@ -83,7 +83,9 @@ is about *how* to help.
   present; the code additionally needs `allow_real=True` and
   `robot.set_tool(payload_kg, tcp)` with the **real** mounted tool's values
   (flag that these must be measured, not guessed), and the host
-  `UR_HOST=192.168.1.11`. Never add `allow_real=True` to a script by default,
+  `UR_HOST=192.168.1.11` (and the laptop on the robot's `192.168.1.x`
+  network — a hanging connect means a network/IP problem, see KNOWLEDGE §7/§9,
+  not a code problem). Never add `allow_real=True` to a script by default,
   never set it to work around a `SafetyViolation`, and do not generate code
   that disables, catches-and-ignores, or works around `SafetyViolation`
   (catching it to *print* the reason, as template 08 does, is fine).
